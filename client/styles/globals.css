@@ -994,6 +994,21 @@
       @apply min-h-[40px] px-4 py-2 text-sm;
     }
     
+    /* Enhanced mobile typography */
+    .text-responsive {
+      @apply text-sm;
+    }
+    
+    /* Mobile-optimized spacing */
+    .space-mobile {
+      @apply space-y-4;
+    }
+    
+    /* Mobile touch targets */
+    .touch-target {
+      @apply min-h-[44px] min-w-[44px];
+    }
+    
     /* Inventory buttons mobile consistency */
     .inventory-buttons .btn {
       @apply min-h-[48px] px-4 py-3 text-sm font-medium;
@@ -1147,9 +1162,9 @@
 
   /* ===== RESPONSIVE LAYOUT IMPROVEMENTS ===== */
   
-  /* Container responsive */
+  /* Container responsive - Enhanced for mobile */
   .container-responsive {
-    @apply w-full max-w-7xl mx-auto px-4;
+    @apply w-full max-w-7xl mx-auto px-3 sm:px-4;
   }
 
   @media (min-width: 640px) {
