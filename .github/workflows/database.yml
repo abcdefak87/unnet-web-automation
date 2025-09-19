@@ -1,0 +1,185 @@
+name: 🗄️ Database Management
+
+# Trigger workflow untuk database operations
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'server/prisma/schema.prisma'
+      - 'server/prisma/migrations/**'
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: 'Database operation to perform'
+        required: true
+        default: 'migrate'
+        type: choice
+        options:
+          - migrate
+          - generate
+          - seed
+          - reset
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  # Job untuk database migration
+  migrate:
+    name: 🔄 Database Migration
+    runs-on: ubuntu-latest
+    if: github.event.inputs.operation == 'migrate' || github.event.inputs.operation == '' || github.event_name == 'push'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
+          
+      - name: 📦 Install Dependencies
+        run: |
+          cd server
+          npm ci
+          
+      - name: 🗄️ Run Database Migration
+        run: |
+          cd server
+          npm run db:migrate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        continue-on-error: true
+        
+      - name: 📊 Migration Status
+        run: |
+          cd server
+          npm run db:status || true
+        continue-on-error: true
+
+  # Job untuk generate Prisma client
+  generate:
+    name: 🔧 Generate Prisma Client
+    runs-on: ubuntu-latest
+    if: github.event.inputs.operation == 'generate' || github.event_name == 'push'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
+          
+      - name: 📦 Install Dependencies
+        run: |
+          cd server
+          npm ci
+          
+      - name: 🔧 Generate Prisma Client
+        run: |
+          cd server
+          npm run db:generate
+        continue-on-error: true
+
+  # Job untuk database seeding
+  seed:
+    name: 🌱 Database Seeding
+    runs-on: ubuntu-latest
+    if: github.event.inputs.operation == 'seed'
+    needs: [migrate, generate]
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
+          
+      - name: 📦 Install Dependencies
+        run: |
+          cd server
+          npm ci
+          
+      - name: 🌱 Seed Database
+        run: |
+          cd server
+          npm run db:seed
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        continue-on-error: true
+
+  # Job untuk database reset (hati-hati!)
+  reset:
+    name: ⚠️ Database Reset
+    runs-on: ubuntu-latest
+    if: github.event.inputs.operation == 'reset'
+    environment: production # Memerlukan approval manual
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
+          
+      - name: 📦 Install Dependencies
+        run: |
+          cd server
+          npm ci
+          
+      - name: ⚠️ Reset Database
+        run: |
+          cd server
+          echo "⚠️ WARNING: This will reset the database!"
+          npm run db:reset
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        continue-on-error: true
+
+  # Job untuk database backup
+  backup:
+    name: 💾 Database Backup
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          
+      - name: 📦 Install Dependencies
+        run: |
+          cd server
+          npm ci
+          
+      - name: 💾 Create Database Backup
+        run: |
+          cd server
+          echo "💾 Creating database backup..."
+          # Contoh untuk SQLite
+          if [ -f "prisma/dev.db" ]; then
+            cp prisma/dev.db "prisma/backup-$(date +%Y%m%d-%H%M%S).db"
+            echo "✅ Database backup created"
+          else
+            echo "⚠️ No database file found"
+          fi
+        continue-on-error: true

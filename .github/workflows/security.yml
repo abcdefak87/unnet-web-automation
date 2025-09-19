@@ -1,0 +1,191 @@
+name: 🔒 Security & Quality Checks
+
+# Trigger workflow untuk security checks
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 2 * * 1' # Weekly security scan (Monday 2 AM)
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  # Job untuk dependency security audit
+  audit:
+    name: 🔍 Security Audit
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            client/package-lock.json
+            server/package-lock.json
+            
+      - name: 📦 Install Dependencies
+        run: |
+          cd client && npm ci
+          cd ../server && npm ci
+          
+      - name: 🔍 Audit Client Dependencies
+        run: |
+          cd client
+          npm audit --audit-level=moderate
+        continue-on-error: true
+        
+      - name: 🔍 Audit Server Dependencies
+        run: |
+          cd server
+          npm audit --audit-level=moderate
+        continue-on-error: true
+
+  # Job untuk code quality checks
+  quality:
+    name: 📊 Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            client/package-lock.json
+            server/package-lock.json
+            
+      - name: 📦 Install Dependencies
+        run: |
+          cd client && npm ci
+          cd ../server && npm ci
+          
+      - name: 🔍 Lint Client Code
+        run: |
+          cd client
+          npm run lint
+        continue-on-error: true
+        
+      - name: 🔍 Lint Server Code
+        run: |
+          cd server
+          npx eslint . --ext .js,.ts --fix || true
+        continue-on-error: true
+
+  # Job untuk secret scanning
+  secrets:
+    name: 🔐 Secret Scanning
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history untuk secret scanning
+          
+      - name: 🔐 Scan for Secrets
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: main
+          head: HEAD
+          extra_args: --debug --only-verified
+
+  # Job untuk vulnerability scanning
+  vulnerabilities:
+    name: 🛡️ Vulnerability Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          
+      - name: 📦 Install Dependencies
+        run: |
+          cd client && npm ci
+          cd ../server && npm ci
+          
+      - name: 🛡️ Run Snyk Security Scan
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+
+  # Job untuk license compliance
+  licenses:
+    name: 📄 License Compliance
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          
+      - name: 📦 Install Dependencies
+        run: |
+          cd client && npm ci
+          cd ../server && npm ci
+          
+      - name: 📄 Check Licenses
+        run: |
+          cd client && npm ls --depth=0
+          cd ../server && npm ls --depth=0
+        continue-on-error: true
+
+  # Job untuk security report
+  report:
+    name: 📋 Security Report
+    runs-on: ubuntu-latest
+    needs: [audit, quality, secrets, vulnerabilities, licenses]
+    if: always()
+    
+    steps:
+      - name: 📋 Generate Security Report
+        run: |
+          echo "🔒 Security Scan Summary" > security-report.md
+          echo "=========================" >> security-report.md
+          echo "" >> security-report.md
+          echo "## Audit Results" >> security-report.md
+          echo "- Client: ${{ needs.audit.result }}" >> security-report.md
+          echo "- Server: ${{ needs.audit.result }}" >> security-report.md
+          echo "" >> security-report.md
+          echo "## Code Quality" >> security-report.md
+          echo "- Status: ${{ needs.quality.result }}" >> security-report.md
+          echo "" >> security-report.md
+          echo "## Secret Scanning" >> security-report.md
+          echo "- Status: ${{ needs.secrets.result }}" >> security-report.md
+          echo "" >> security-report.md
+          echo "## Vulnerability Scan" >> security-report.md
+          echo "- Status: ${{ needs.vulnerabilities.result }}" >> security-report.md
+          echo "" >> security-report.md
+          echo "## License Compliance" >> security-report.md
+          echo "- Status: ${{ needs.licenses.result }}" >> security-report.md
+          
+      - name: 📤 Upload Security Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: security-report.md
+          retention-days: 30

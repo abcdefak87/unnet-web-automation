@@ -1,0 +1,405 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                    String                   @id @default(cuid())
+  name                  String
+  username              String                   @unique
+  email                 String?                  @unique
+  password              String
+  role                  String                   @default("user")
+  permissions           String?
+  phone                 String?                  @unique
+  whatsappNumber        String?                  @unique
+  isActive              Boolean                  @default(true)
+  isVerified            Boolean                  @default(false)
+  lastLogin             DateTime?
+  whatsappJid           String?                  @unique
+  refreshTokenHash      String?
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+  inventoryLogs         InventoryLog[]
+  createdJobs           Job[]                    @relation("CreatedBy")
+  rejectedJobs          Job[]                    @relation("RejectedBy")
+  approvedJobs          Job[]                    @relation("ApprovedBy")
+  notifications         Notification[]
+  rejectedRegistrations TechnicianRegistration[] @relation("RejectedRegistrations")
+  approvedRegistrations TechnicianRegistration[] @relation("ApprovedRegistrations")
+
+  @@map("users")
+}
+
+model WhatsAppSession {
+  id        String   @id @default(cuid())
+  fileName  String   @unique
+  content   Bytes
+  encrypted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("whatsapp_sessions")
+}
+
+model WhatsAppMetrics {
+  id              String   @id @default(cuid())
+  timestamp       DateTime @default(now())
+  messagesSent    Int      @default(0)
+  messagesFailed  Int      @default(0)
+  messagesQueued  Int      @default(0)
+  connections     Int      @default(0)
+  disconnects     Int      @default(0)
+  errors          Int      @default(0)
+  avgResponseTime Float?
+  metadata        String?
+
+  @@index([timestamp])
+  @@map("whatsapp_metrics")
+}
+
+model WhatsAppMessage {
+  id          String    @id @default(cuid())
+  messageId   String?   @unique
+  from        String
+  to          String
+  content     String?
+  type        String
+  status      String
+  retries     Int       @default(0)
+  error       String?
+  createdAt   DateTime  @default(now())
+  sentAt      DateTime?
+  deliveredAt DateTime?
+  readAt      DateTime?
+
+  @@index([from, to])
+  @@index([status])
+  @@index([createdAt])
+  @@map("whatsapp_messages")
+}
+
+model WhatsAppAlert {
+  id         String    @id @default(cuid())
+  level      String
+  message    String
+  context    String?
+  resolved   Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  @@index([level, resolved])
+  @@index([createdAt])
+  @@map("whatsapp_alerts")
+}
+
+model OTP {
+  id         String   @id @default(cuid())
+  identifier String
+  code       String
+  type       String
+  attempts   Int      @default(0)
+  expiresAt  DateTime
+  verified   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([identifier, type])
+  @@map("otps")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String
+  entityType String?
+  entityId   String?
+  ip         String?
+  userAgent  String?
+  success    Boolean
+  statusCode Int?
+  error      String?
+  metadata   String?
+  createdAt  DateTime @default(now())
+
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([ip])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model Technician {
+  id                 String            @id @default(cuid())
+  name               String
+  phone              String            @unique
+  whatsappJid        String?           @unique
+  isActive           Boolean           @default(true)
+  isAvailable        Boolean           @default(true)
+  isAdmin            Boolean           @default(false)
+  skills             String?
+  lastKnownLat       Float?
+  lastKnownLon       Float?
+  lastLocationUpdate DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  inventoryLogs      InventoryLog[]
+  jobAssignments     JobTechnician[]
+  roomMessages       TeamRoomMessage[]
+
+  @@map("technicians")
+}
+
+model Customer {
+  id                 String    @id @default(cuid())
+  name               String
+  phone              String    @unique
+  address            String
+  email              String?   @unique
+  ktpName            String?
+  ktpNumber          String?   @unique
+  ktpAddress         String?
+  ktpPhotoUrl        String?
+  housePhotoUrl      String?
+  shareLocation      String?
+  latitude           Float?
+  longitude          Float?
+  isVerified         Boolean   @default(true)
+  installationType   String?
+  registrationStatus String?   @default("PENDING")
+  packageType        String?
+  registeredAt       DateTime?
+  approvedAt         DateTime?
+  approvedById       String?
+  rejectedAt         DateTime?
+  rejectedById       String?
+  rejectionReason    String?
+  registrationIP     String?
+  userAgent          String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  jobs               Job[]
+
+  @@index([phone])
+  @@index([email])
+  @@index([ktpNumber])
+  @@index([registrationStatus])
+  @@index([registeredAt])
+  @@map("customers")
+}
+
+model Job {
+  id                 String           @id @default(cuid())
+  jobNumber          String           @unique
+  type               String
+  category           String           @default("PSB")
+  status             String           @default("OPEN")
+  title              String?
+  description        String?
+  address            String
+  latitude           Float?
+  longitude          Float?
+  priority           String           @default("MEDIUM")
+  scheduledDate      DateTime?
+  assignmentType     String           @default("SINGLE")
+  approvalStatus     String           @default("PENDING")
+  approvedAt         DateTime?
+  approvedById       String?
+  rejectedAt         DateTime?
+  rejectedById       String?
+  rejectionReason    String?
+  customerId         String
+  createdById        String?
+  housePhotoUrl      String?
+  idCardPhotoUrl     String?
+  problemType        String?
+  completedAt        DateTime?
+  completionPhotoUrl String?
+  completionNotes    String?
+  technicianLocation String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  inventoryUsage     InventoryUsage[]
+  technicians        JobTechnician[]
+  createdBy          User?            @relation("CreatedBy", fields: [createdById], references: [id])
+  customer           Customer         @relation(fields: [customerId], references: [id])
+  rejectedBy         User?            @relation("RejectedBy", fields: [rejectedById], references: [id])
+  approvedBy         User?            @relation("ApprovedBy", fields: [approvedById], references: [id])
+  notifications      Notification[]
+  teamRoom           TeamRoom?
+
+  @@map("jobs")
+}
+
+model JobTechnician {
+  id              String     @id @default(cuid())
+  jobId           String
+  technicianId    String
+  role            String     @default("PRIMARY")
+  assignedAt      DateTime   @default(now())
+  acceptedAt      DateTime?
+  arrivedAt       DateTime?
+  completedAt     DateTime?
+  completionNotes String?
+  customerRating  Int?
+  technician      Technician @relation(fields: [technicianId], references: [id])
+  job             Job        @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, technicianId])
+  @@map("job_technicians")
+}
+
+model Item {
+  id             String           @id @default(cuid())
+  name           String
+  code           String           @unique
+  category       String           @default("KEPERLUAN_BERSAMA")
+  subcategory    String?
+  description    String?
+  unit           String           @default("pcs")
+  currentStock   Int              @default(0)
+  minStock       Int              @default(0)
+  price          Float            @default(0)
+  location       String?
+  isActive       Boolean          @default(true)
+  isBatch        Boolean          @default(false)
+  batchType      String?
+  serialNumbers  String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  inventoryLogs  InventoryLog[]
+  inventoryUsage InventoryUsage[]
+  parentBatch    ModemBatchItem[] @relation("BatchParent")
+  batchItems     ModemBatchItem[]
+
+  @@map("items")
+}
+
+model ModemBatchItem {
+  id           String   @id @default(cuid())
+  batchId      String
+  itemId       String
+  quantity     Int      @default(1)
+  serialNumber String?
+  status       String   @default("AVAILABLE")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  item         Item     @relation("BatchParent", fields: [itemId], references: [id])
+  batch        Item     @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, itemId])
+  @@map("modem_batch_items")
+}
+
+model InventoryLog {
+  id            String      @id @default(cuid())
+  itemId        String
+  userId        String?
+  technicianId  String?
+  type          String
+  quantity      Int
+  previousStock Int?
+  newStock      Int?
+  notes         String?
+  jobId         String?
+  supplier      String?
+  invoiceNumber String?
+  receivedDate  DateTime?
+  recipient     String?
+  purpose       String?
+  usedDate      DateTime?
+  returnReason  String?
+  returnDate    DateTime?
+  damageReason  String?
+  damageDate    DateTime?
+  createdAt     DateTime    @default(now())
+  technician    Technician? @relation(fields: [technicianId], references: [id])
+  user          User?       @relation(fields: [userId], references: [id])
+  item          Item        @relation(fields: [itemId], references: [id])
+
+  @@map("inventory_logs")
+}
+
+model InventoryUsage {
+  id               String   @id @default(cuid())
+  jobId            String
+  itemId           String
+  quantityUsed     Int
+  quantityReturned Int      @default(0)
+  status           String   @default("PENDING")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  item             Item     @relation(fields: [itemId], references: [id])
+  job              Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@map("inventory_usage")
+}
+
+model Notification {
+  id           String    @id @default(cuid())
+  type         String
+  recipient    String
+  message      String
+  status       String    @default("PENDING")
+  jobId        String?
+  userId       String?
+  sentAt       DateTime?
+  errorMessage String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  user         User?     @relation(fields: [userId], references: [id])
+  job          Job?      @relation(fields: [jobId], references: [id])
+
+  @@map("notifications")
+}
+
+model TeamRoom {
+  id           String            @id @default(cuid())
+  jobId        String            @unique
+  roomName     String
+  status       String            @default("ACTIVE")
+  messageCount Int               @default(0)
+  createdAt    DateTime          @default(now())
+  closedAt     DateTime?
+  messages     TeamRoomMessage[]
+  job          Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@map("team_rooms")
+}
+
+model TeamRoomMessage {
+  id           String     @id @default(cuid())
+  roomId       String
+  technicianId String
+  messageType  String     @default("TEXT")
+  content      String
+  metadata     String?
+  timestamp    DateTime   @default(now())
+  technician   Technician @relation(fields: [technicianId], references: [id])
+  room         TeamRoom   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@map("team_room_messages")
+}
+
+model TechnicianRegistration {
+  id               String    @id @default(cuid())
+  telegramChatId   String
+  telegramUsername String?
+  firstName        String
+  lastName         String?
+  phone            String?
+  status           String    @default("PENDING")
+  approvedAt       DateTime?
+  approvedById     String?
+  rejectedAt       DateTime?
+  rejectedById     String?
+  rejectionReason  String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  rejectedBy       User?     @relation("RejectedRegistrations", fields: [rejectedById], references: [id])
+  approvedBy       User?     @relation("ApprovedRegistrations", fields: [approvedById], references: [id])
+
+  @@map("technician_registrations")
+}

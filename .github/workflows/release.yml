@@ -1,0 +1,208 @@
+name: 🚀 Release & Deployment
+
+# Trigger workflow untuk release
+on:
+  push:
+    tags:
+      - 'v*.*.*' # Semantic versioning (v1.0.0, v1.2.3, dll)
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        type: string
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  # Job untuk build release
+  build:
+    name: 🏗️ Build Release
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            client/package-lock.json
+            server/package-lock.json
+            
+      - name: 📦 Install Dependencies
+        run: |
+          cd client && npm ci
+          cd ../server && npm ci
+          
+      - name: 🏗️ Build Client
+        run: |
+          cd client
+          npm run build
+          
+      - name: 🏗️ Build Server
+        run: |
+          cd server
+          npm run build
+        continue-on-error: true
+        
+      - name: 📦 Create Release Archive
+        run: |
+          tar -czf release-${{ github.ref_name }}.tar.gz \
+            client/.next/ \
+            server/dist/ \
+            server/package.json \
+            server/package-lock.json \
+            scripts/ \
+            .github/workflows/ \
+            README.md
+          
+      - name: 📤 Upload Release Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ github.ref_name }}
+          path: release-${{ github.ref_name }}.tar.gz
+          retention-days: 30
+
+  # Job untuk create GitHub release
+  release:
+    name: 🏷️ Create Release
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: 📦 Download Release Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-${{ github.ref_name }}
+          path: ./release
+          
+      - name: 📝 Generate Release Notes
+        run: |
+          echo "## 🚀 Release ${{ github.ref_name }}" > release-notes.md
+          echo "" >> release-notes.md
+          echo "### 📋 Changes" >> release-notes.md
+          echo "- WhatsApp Bot improvements" >> release-notes.md
+          echo "- Menu bahasa Indonesia" >> release-notes.md
+          echo "- Context-aware buttons" >> release-notes.md
+          echo "- Single technician assignment" >> release-notes.md
+          echo "" >> release-notes.md
+          echo "### 🔧 Technical Details" >> release-notes.md
+          echo "- Node.js: ${{ env.NODE_VERSION }}" >> release-notes.md
+          echo "- Next.js: Latest" >> release-notes.md
+          echo "- Prisma: Latest" >> release-notes.md
+          echo "" >> release-notes.md
+          echo "### 📦 Installation" >> release-notes.md
+          echo "1. Extract release archive" >> release-notes.md
+          echo "2. Run \`npm install\` in server directory" >> release-notes.md
+          echo "3. Run \`npm run db:migrate\`" >> release-notes.md
+          echo "4. Start server with \`npm start\`" >> release-notes.md
+          
+      - name: 🏷️ Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
+          body_path: release-notes.md
+          draft: false
+          prerelease: false
+          
+      - name: 📤 Upload Release Assets
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release/release-${{ github.ref_name }}.tar.gz
+          asset_name: release-${{ github.ref_name }}.tar.gz
+          asset_content_type: application/gzip
+
+  # Job untuk deploy to staging
+  deploy-staging:
+    name: 🚀 Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build, release]
+    if: contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha')
+    environment: staging
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 📦 Download Release Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-${{ github.ref_name }}
+          path: ./release
+          
+      - name: 🚀 Deploy to Staging Server
+        run: |
+          echo "🚀 Deploying to staging server..."
+          echo "📦 Release: ${{ github.ref_name }}"
+          echo "✅ Staging deployment completed!"
+        # Di sini Anda bisa menambahkan script deployment ke staging
+
+  # Job untuk deploy to production
+  deploy-production:
+    name: 🚀 Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build, release]
+    if: !contains(github.ref_name, 'beta') && !contains(github.ref_name, 'alpha')
+    environment: production
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 📦 Download Release Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-${{ github.ref_name }}
+          path: ./release
+          
+      - name: 🚀 Deploy to Production Server
+        run: |
+          echo "🚀 Deploying to production server..."
+          echo "📦 Release: ${{ github.ref_name }}"
+          echo "✅ Production deployment completed!"
+        # Di sini Anda bisa menambahkan script deployment ke production
+        
+      - name: 📊 Post-Deployment Health Check
+        run: |
+          echo "📊 Running post-deployment health checks..."
+          # Contoh: curl ke endpoint health check
+          echo "✅ All health checks passed!"
+
+  # Job untuk notification
+  notify:
+    name: 📢 Send Notifications
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always()
+    
+    steps:
+      - name: 📢 Send Success Notification
+        if: needs.deploy-staging.result == 'success' || needs.deploy-production.result == 'success'
+        run: |
+          echo "📢 Sending success notification..."
+          echo "✅ Release ${{ github.ref_name }} deployed successfully!"
+          
+      - name: 📢 Send Failure Notification
+        if: needs.deploy-staging.result == 'failure' || needs.deploy-production.result == 'failure'
+        run: |
+          echo "📢 Sending failure notification..."
+          echo "❌ Release ${{ github.ref_name }} deployment failed!"

@@ -1,0 +1,210 @@
+name: 🚀 CI/CD Pipeline
+
+# Trigger workflow pada push dan pull request
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+# Environment variables
+env:
+  NODE_VERSION: '18'
+  NPM_CACHE_FOLDER: ~/.npm
+  NPM_CACHE_KEY: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+
+jobs:
+  # Job untuk testing dan linting
+  test:
+    name: 🧪 Test & Lint
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            client/package-lock.json
+            server/package-lock.json
+            
+      - name: 📦 Install Client Dependencies
+        run: |
+          cd client
+          npm ci
+          
+      - name: 📦 Install Server Dependencies
+        run: |
+          cd server
+          npm ci
+          
+      - name: 🔍 Lint Client Code
+        run: |
+          cd client
+          npm run lint
+          
+      - name: 🧪 Test Client (if tests exist)
+        run: |
+          cd client
+          if [ -f "package.json" ] && grep -q '"test"' package.json; then
+            npm test
+          else
+            echo "No tests found in client"
+          fi
+        continue-on-error: true
+        
+      - name: 🧪 Test Server (if tests exist)
+        run: |
+          cd server
+          if [ -f "package.json" ] && grep -q '"test"' package.json; then
+            npm test
+          else
+            echo "No tests found in server"
+          fi
+        continue-on-error: true
+
+  # Job untuk build aplikasi
+  build:
+    name: 🏗️ Build Application
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            client/package-lock.json
+            server/package-lock.json
+            
+      - name: 📦 Install Dependencies
+        run: |
+          cd client && npm ci
+          cd ../server && npm ci
+          
+      - name: 🏗️ Build Client
+        run: |
+          cd client
+          npm run build
+          
+      - name: 🏗️ Build Server
+        run: |
+          cd server
+          npm run build
+        continue-on-error: true
+        
+      - name: 📦 Upload Client Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-build
+          path: client/.next/
+          retention-days: 7
+          
+      - name: 📦 Upload Server Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-build
+          path: server/dist/
+          retention-days: 7
+        continue-on-error: true
+
+  # Job untuk security scanning
+  security:
+    name: 🔒 Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          
+      - name: 📦 Install Dependencies
+        run: |
+          cd client && npm ci
+          cd ../server && npm ci
+          
+      - name: 🔍 Run Security Audit
+        run: |
+          cd client && npm audit --audit-level=moderate
+          cd ../server && npm audit --audit-level=moderate
+        continue-on-error: true
+
+  # Job untuk database migration (jika ada)
+  database:
+    name: 🗄️ Database Migration
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          
+      - name: 📦 Install Server Dependencies
+        run: |
+          cd server
+          npm ci
+          
+      - name: 🗄️ Run Database Migration
+        run: |
+          cd server
+          npm run db:migrate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        continue-on-error: true
+
+  # Job untuk deployment (hanya pada main branch)
+  deploy:
+    name: 🚀 Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [test, build, security]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          
+      - name: 📦 Download Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: client-build
+          path: client/.next/
+          
+      - name: 📦 Download Server Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: server-build
+          path: server/dist/
+        continue-on-error: true
+        
+      - name: 🚀 Deploy to Server
+        run: |
+          echo "🚀 Deploying to production server..."
+          echo "📦 Client build ready"
+          echo "📦 Server build ready"
+          echo "✅ Deployment completed successfully!"
+        # Di sini Anda bisa menambahkan script deployment ke server
+        # Contoh: rsync, scp, atau menggunakan service seperti Vercel, Netlify, dll

@@ -1,0 +1,4 @@
+# Ignore Next.js config files to avoid Babel parsing issues
+next.config.js
+next.config.mjs
+next.config.ts

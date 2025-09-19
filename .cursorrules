@@ -1,0 +1,148 @@
+# Project Configuration & Standards
+
+## AI Behavior Rules
+- Plan with structured to-do lists before executing any task
+- Ask for clarification on ambiguous requirements
+- Provide step-by-step explanations for complex changes
+- Maintain backward compatibility always
+- Never modify authentication or payment code without explicit permission
+- Always check for errors using `read_lints` before making changes
+- Fix all TypeScript and ESLint errors before proceeding
+
+## Project Structure
+- **Client**: Next.js 14 (TypeScript, Tailwind) in `client/` directory
+- **Server**: Node.js/Express API in `server/` directory
+- **Database**: Prisma with SQLite for development
+- **Realtime**: Socket.IO for real-time communication
+- **WhatsApp**: Baileys integration for WhatsApp bot functionality
+
+## Code Standards
+- **Language**: TypeScript with strict mode enabled
+- **Framework**: Next.js 14 with App Router
+- **Style Guide**: ESLint with Next.js configuration
+- **Testing**: Manual testing with error checking
+- **Documentation**: JSDoc for all public APIs and complex functions
+
+## Architecture Principles
+- Follow Domain-Driven Design (DDD) patterns
+- Use Repository pattern for data access via Prisma
+- Implement SOLID principles
+- Prefer composition over inheritance
+- Use dependency injection where appropriate
+- Maintain separation of concerns between client and server
+
+## Security Requirements
+- All user inputs must be validated on both client and server
+- Use parameterized queries exclusively (Prisma ORM)
+- Implement rate limiting (100 req/min default)
+- Add security headers to all API responses
+- Hash passwords with bcrypt (12 rounds minimum)
+- Never expose WhatsApp session files or sensitive data
+- Use CSRF protection for all forms
+
+## Performance Standards
+- API response time < 200ms
+- Database queries < 50ms
+- Frontend bundle < 500KB
+- Use React.memo for expensive components
+- Implement proper caching strategies
+- Optimize images with Next.js Image component
+
+## Development Workflow
+```bash
+# Quick Start Commands
+cd client && npm install
+cd ../server && npm install
+
+# Development Servers
+cd server && npm run dev  # API server on port 3001
+cd client && npm run dev  # Next.js app on port 3000
+
+# Database Operations
+cd server && npm run db:migrate  # Run migrations
+cd server && npm run db:studio   # Open Prisma Studio
+cd server && npm run db:seed     # Seed database
+```
+
+## File Structure
+- `client/` - Frontend Next.js application
+  - `pages/` - Next.js pages and routing
+  - `components/` - Reusable React components
+  - `lib/` - Utility functions and API clients
+  - `styles/` - Global styles and Tailwind config
+- `server/` - Backend API server
+  - `routes/` - API route handlers
+  - `middleware/` - Express middleware
+  - `services/` - Business logic services
+  - `prisma/` - Database schema and migrations
+  - `utils/` - Server utility functions
+
+## Git Conventions
+- **Commit format**: `type(scope): description`
+  - Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
+  - Scope: `client`, `server`, `db`, `whatsapp`, etc.
+- **Branch naming**: `feature/ticket-description` or `fix/issue-description`
+- **PR requirements**: Include tests and documentation updates
+- **Merge strategy**: Squash commits before merge
+
+## Error Handling & Quality
+- **Pre-commit checklist**:
+  1. Run `read_lints` to check for errors
+  2. Fix all TypeScript errors (severity 8)
+  3. Fix all ESLint errors (severity 4)
+  4. Run `npm run build` to verify build
+  5. Test affected functionality manually
+- **Error priorities**:
+  1. TypeScript errors (CRITICAL)
+  2. ESLint errors (HIGH)
+  3. Build failures (CRITICAL)
+  4. ESLint warnings (MEDIUM)
+
+## WhatsApp Bot Development
+- Use modular architecture in `server/services/whatsapp/`
+- Extend `BaseCommand` for new commands
+- Implement proper validation and rate limiting
+- Use `SessionManager` for user session management
+- Follow established middleware pipeline patterns
+- Never modify session files without explicit permission
+
+## API Conventions
+- Use RESTful API design principles
+- Implement consistent error responses with `@hapi/boom`
+- Use proper HTTP status codes
+- Validate all inputs with `express-validator`
+- Document API endpoints with JSDoc
+- Maintain backward compatibility for public APIs
+
+## Database Guidelines
+- Use Prisma for all database operations
+- Follow migration-first approach for schema changes
+- Use proper indexing for performance
+- Implement soft deletes where appropriate
+- Use transactions for multi-table operations
+- Never run raw SQL without proper validation
+
+## Testing Strategy
+- Manual testing for all new features
+- Test API endpoints with curl/Postman
+- Verify database operations in Prisma Studio
+- Check client-side functionality in browser
+- Test WhatsApp bot commands with running service
+- Verify error handling and edge cases
+
+## Performance Monitoring
+- Monitor bundle size with `npm run build`
+- Check for memory leaks in long-running processes
+- Use React DevTools for component performance
+- Monitor API response times
+- Check database query performance
+- Optimize images and assets
+
+## Security Checklist
+- No hardcoded secrets or API keys
+- CSRF protection enabled
+- Input sanitization on all user inputs
+- Rate limiting implemented
+- Secure session management
+- Proper error handling without information leakage
+- WhatsApp session files properly secured

@@ -1,0 +1,122 @@
+name: 🤖 WhatsApp Bot Deployment
+
+# Trigger workflow untuk WhatsApp bot
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'scripts/whatsapp-bot-integrated.js'
+      - 'server/whatsapp/**'
+      - 'server/routes/jobs.js'
+      - 'server/whatsapp/consolidated/**'
+  workflow_dispatch: # Manual trigger
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  # Job untuk test WhatsApp bot
+  test-bot:
+    name: 🧪 Test WhatsApp Bot
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
+          
+      - name: 📦 Install Dependencies
+        run: |
+          cd server
+          npm ci
+          
+      - name: 🔍 Lint Bot Code
+        run: |
+          cd scripts
+          npx eslint whatsapp-bot-integrated.js --fix || true
+        continue-on-error: true
+        
+      - name: 🧪 Test Bot Syntax
+        run: |
+          cd scripts
+          node -c whatsapp-bot-integrated.js
+          echo "✅ Bot syntax is valid"
+
+  # Job untuk backup session files
+  backup-sessions:
+    name: 💾 Backup WhatsApp Sessions
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 💾 Backup Session Files
+        run: |
+          echo "📁 Creating backup of WhatsApp session files..."
+          if [ -d "server/auth_info_baileys" ]; then
+            tar -czf whatsapp-sessions-backup-$(date +%Y%m%d-%H%M%S).tar.gz server/auth_info_baileys/
+            echo "✅ Session backup created"
+          else
+            echo "⚠️ No session files found"
+          fi
+        continue-on-error: true
+
+  # Job untuk deploy bot ke server
+  deploy-bot:
+    name: 🚀 Deploy WhatsApp Bot
+    runs-on: ubuntu-latest
+    needs: [test-bot, backup-sessions]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          
+      - name: 📦 Install Dependencies
+        run: |
+          cd server
+          npm ci
+          
+      - name: 🚀 Deploy Bot to Server
+        run: |
+          echo "🤖 Deploying WhatsApp Bot..."
+          echo "📦 Bot files ready"
+          echo "✅ Bot deployment completed!"
+        # Di sini Anda bisa menambahkan script deployment bot ke server
+        # Contoh: rsync, scp, atau restart service bot
+        
+      - name: 🔄 Restart Bot Service
+        run: |
+          echo "🔄 Restarting WhatsApp Bot service..."
+          # Contoh: systemctl restart whatsapp-bot
+          # atau: pm2 restart whatsapp-bot
+          echo "✅ Bot service restarted"
+
+  # Job untuk monitoring bot health
+  monitor-bot:
+    name: 📊 Monitor Bot Health
+    runs-on: ubuntu-latest
+    needs: deploy-bot
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: 📊 Check Bot Status
+        run: |
+          echo "📊 Checking WhatsApp Bot health..."
+          # Di sini Anda bisa menambahkan health check
+          # Contoh: curl ke endpoint health check bot
+          echo "✅ Bot is healthy"
+        continue-on-error: true

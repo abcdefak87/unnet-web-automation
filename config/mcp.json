@@ -1,0 +1,37 @@
+{
+    "mcpServers": {
+      "context7": {
+        "command": "npx",
+        "args": ["-y", "@upstash/context7-mcp"]
+      },
+      "gitmcp": {
+        "url": "https://gitmcp.io/{owner}/{repo}"
+      },
+      "repomix": {
+        "command": "npx",
+        "args": ["-y", "repomix", "--mcp"]
+      },
+      "sequential-thinking": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-sequential-thinking@latest"]
+      },
+      "time": {
+        "command": "uvx",
+        "args": ["mcp-server-time"]
+      },
+      "ddg-search": {
+        "command": "uvx",
+        "args": ["duckduckgo-mcp-server"]
+      },
+      "fetch": {
+        "command": "uvx",
+        "args": ["mcp-server-fetch"]
+      },
+      "Linear": {
+        "url": "https://mcp.linear.app/mcp"
+      },
+      "Sentry": {
+        "url": "https://mcp.sentry.dev/mcp"
+      }
+    }
+  }
