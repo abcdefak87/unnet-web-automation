@@ -116,6 +116,36 @@ export default function CreateJob() {
         toast.error('Tanggal jadwal harus diisi')
         return
       }
+
+      // Validate file types and sizes for PSB jobs
+      if (data.category === 'PSB') {
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+        const maxSize = 5 * 1024 * 1024 // 5MB
+
+        if (data.housePhoto?.[0]) {
+          const file = data.housePhoto[0]
+          if (!allowedTypes.includes(file.type)) {
+            toast.error('Format foto rumah tidak didukung. Gunakan JPG, PNG, GIF, atau WebP.')
+            return
+          }
+          if (file.size > maxSize) {
+            toast.error('Foto rumah terlalu besar. Maksimal 5MB.')
+            return
+          }
+        }
+
+        if (data.customerIdPhoto?.[0]) {
+          const file = data.customerIdPhoto[0]
+          if (!allowedTypes.includes(file.type)) {
+            toast.error('Format foto KTP tidak didukung. Gunakan JPG, PNG, GIF, atau WebP.')
+            return
+          }
+          if (file.size > maxSize) {
+            toast.error('Foto KTP terlalu besar. Maksimal 5MB.')
+            return
+          }
+        }
+      }
       
       console.log('=== FRONTEND DEBUG ===');
       console.log('Form data before FormData creation:', data);
@@ -168,7 +198,35 @@ export default function CreateJob() {
       router.push('/jobs')
     } catch (error: any) {
       console.error('Create job error:', error)
-      const message = error.response?.data?.error || 'Gagal membuat tiket'
+      
+      // Handle specific error types
+      let message = 'Gagal membuat tiket'
+      
+      if (error.response?.data?.error) {
+        const serverError = error.response.data.error
+        
+        // Handle file upload errors
+        if (serverError.includes('File type') && serverError.includes('not allowed')) {
+          message = 'Format file tidak didukung. Gunakan JPG, PNG, GIF, atau WebP.'
+        } else if (serverError.includes('File size')) {
+          message = 'Ukuran file terlalu besar. Maksimal 5MB per file.'
+        } else if (serverError.includes('Suspicious file')) {
+          message = 'File tidak aman. Gunakan file gambar yang valid.'
+        } else if (serverError.includes('Empty files')) {
+          message = 'File kosong tidak diperbolehkan.'
+        } else {
+          message = serverError
+        }
+      } else if (error.code === 'ERR_NETWORK') {
+        message = 'Koneksi bermasalah. Periksa koneksi internet Anda.'
+      } else if (error.response?.status === 413) {
+        message = 'File terlalu besar. Maksimal 5MB per file.'
+      } else if (error.response?.status === 400) {
+        message = 'Data tidak valid. Periksa kembali form yang diisi.'
+      } else if (error.response?.status === 500) {
+        message = 'Terjadi kesalahan server. Silakan coba lagi.'
+      }
+      
       toast.error(message)
     } finally {
       setIsLoading(false)
@@ -348,13 +406,16 @@ export default function CreateJob() {
                       <Camera className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
                         {...register('housePhoto', {
                           required: jobCategory === 'PSB' ? 'Foto rumah wajib untuk pemasangan' : false
                         })}
                         className="form-input pl-10"
                       />
                     </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      💡 Format yang didukung: JPG, PNG, GIF, WebP (maksimal 5MB)
+                    </p>
                     {errors.housePhoto && (
                       <p className="form-error">{errors.housePhoto.message}</p>
                     )}
@@ -367,13 +428,16 @@ export default function CreateJob() {
                       <User className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
                         {...register('customerIdPhoto', {
                           required: jobCategory === 'PSB' ? 'Foto KTP wajib untuk pemasangan' : false
                         })}
                         className="form-input pl-10"
                       />
                     </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      💡 Format yang didukung: JPG, PNG, GIF, WebP (maksimal 5MB)
+                    </p>
                     {errors.customerIdPhoto && (
                       <p className="form-error">{errors.customerIdPhoto.message}</p>
                     )}
