@@ -317,7 +317,7 @@ async function main() {
   await new Promise(resolve => setTimeout(resolve, 2000));
   
   // Start WhatsApp bot
-  startProcess('node', ['whatsapp-bot-integrated.js'], 'scripts', 'WhatsApp Bot', 'magenta');
+  startProcess('node', ['scripts/whatsapp-bot-integrated.js'], '.', 'WhatsApp Bot', 'magenta');
   
   // Setup signal handlers
   process.on('SIGINT', gracefulShutdown);

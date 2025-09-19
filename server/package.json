@@ -42,7 +42,9 @@
     "qrcode": "^1.5.4",
     "qrcode-terminal": "^0.12.0",
     "redis": "^4.6.0",
+    "sharp": "^0.30.7",
     "socket.io": "^4.8.1",
+    "validator": "^13.15.15",
     "winston": "^3.17.0"
   },
   "devDependencies": {
