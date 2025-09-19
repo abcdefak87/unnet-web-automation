@@ -657,7 +657,11 @@ router.post('/register',
             priority: 'MEDIUM',
             housePhotoUrl: customerData.housePhotoUrl,
             idCardPhotoUrl: customerData.ktpPhotoUrl,
-            createdById: null
+            createdById: null,
+            // PSB specific fields
+            packageType: packageType,
+            installationType: installationType,
+            installationDescription: `Pemasangan WiFi ${packageType} - ${installationType}`
           }
         });
 
@@ -682,6 +686,73 @@ Silakan assign teknisi untuk pemasangan WiFi.`;
           console.log('Admin notification:', adminMessage);
         } catch (whatsappError) {
           console.error('WhatsApp notification error:', whatsappError);
+        }
+
+        // Send notification to technicians for PSB ticket
+        try {
+          const { getProblemDescription } = require('../utils/problemTypeMapper');
+          
+          // Format address/location properly
+          let addressLine = '';
+          if (customerData.address) {
+            // Check if address is a sharelok link
+            if (customerData.address.includes('sharelok') || customerData.address.includes('maps.google.com') || customerData.address.includes('goo.gl')) {
+              addressLine = `🗺️ Lokasi: ${customerData.address}\n`;
+            } else {
+              addressLine = `📍 Alamat: ${customerData.address}\n`;
+            }
+          }
+
+          const techMessage = (
+            `🚨 *Tiket Baru PSB*\n\n` +
+            `🎫 Tiket: ${jobNumber}\n` +
+            `👤 Pelanggan: ${name}\n` +
+            `📞 Kontak: ${phone}\n` +
+            `📦 Paket: ${packageType || 'Pemasangan WiFi Baru'}\n` +
+            addressLine +
+            `⏰ Status: OPEN\n\n` +
+            
+            `🎯 *PILIH AKSI:*\n` +
+            `1️⃣ AMBIL JOB\n` +
+            `2️⃣ BATAL\n\n` +
+            
+            `💡 *Ketik angka untuk memilih aksi!*`
+          );
+
+          // Broadcast to all active technicians
+          const techs = await tx.technician.findMany({ where: { isActive: true } });
+          for (const tech of techs) {
+            const normalizePhone = (p) => {
+              if (!p) return null;
+              let n = p.toString().replace(/\D/g, '');
+              if (n.startsWith('0')) n = '62' + n.substring(1);
+              if (!n.startsWith('62')) n = '62' + n;
+              return n;
+            };
+            const jid = tech.whatsappJid || (normalizePhone(tech.phone) ? `${normalizePhone(tech.phone)}@s.whatsapp.net` : null);
+            if (!jid) continue;
+            
+            await tx.notification.create({ 
+              data: { 
+                type: 'WHATSAPP', 
+                recipient: jid, 
+                message: techMessage, 
+                status: 'PENDING', 
+                jobId: job.id 
+              } 
+            });
+            
+            // Try direct send if socket exists (non-blocking)
+            try { 
+              if (global.whatsappSocket && global.whatsappSocket.user) {
+                await global.whatsappSocket.sendMessage(jid, { text: techMessage }); 
+              } 
+            } catch (e) {
+              console.warn('Direct WA send failed (PSB notify):', e.message);
+            }
+          }
+        } catch (psbNotifyError) {
+          console.error('PSB technician notification error:', psbNotifyError);
         }
 
         return { customer, job };

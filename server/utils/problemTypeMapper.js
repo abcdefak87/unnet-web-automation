@@ -28,6 +28,10 @@ function getProblemDescription(job) {
   if (job.category === 'GANGGUAN') {
     return getProblemTypeText(job.problemType)
   }
+  if (job.category === 'PSB') {
+    // For PSB, show package type from installation description
+    return job.installationDescription || job.packageType || 'Pemasangan WiFi Baru'
+  }
   return job.description || job.symptoms || job.notes || 'Tidak ada detail'
 }
 

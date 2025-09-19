@@ -191,44 +191,48 @@ model Customer {
 }
 
 model Job {
-  id                 String           @id @default(cuid())
-  jobNumber          String           @unique
-  type               String
-  category           String           @default("PSB")
-  status             String           @default("OPEN")
-  title              String?
-  description        String?
-  address            String
-  latitude           Float?
-  longitude          Float?
-  priority           String           @default("MEDIUM")
-  scheduledDate      DateTime?
-  assignmentType     String           @default("SINGLE")
-  approvalStatus     String           @default("PENDING")
-  approvedAt         DateTime?
-  approvedById       String?
-  rejectedAt         DateTime?
-  rejectedById       String?
-  rejectionReason    String?
-  customerId         String
-  createdById        String?
-  housePhotoUrl      String?
-  idCardPhotoUrl     String?
-  problemType        String?
-  completedAt        DateTime?
-  completionPhotoUrl String?
-  completionNotes    String?
-  technicianLocation String?
-  createdAt          DateTime         @default(now())
-  updatedAt          DateTime         @updatedAt
-  inventoryUsage     InventoryUsage[]
-  technicians        JobTechnician[]
-  createdBy          User?            @relation("CreatedBy", fields: [createdById], references: [id])
-  customer           Customer         @relation(fields: [customerId], references: [id])
-  rejectedBy         User?            @relation("RejectedBy", fields: [rejectedById], references: [id])
-  approvedBy         User?            @relation("ApprovedBy", fields: [approvedById], references: [id])
-  notifications      Notification[]
-  teamRoom           TeamRoom?
+  id                     String           @id @default(cuid())
+  jobNumber              String           @unique
+  type                   String
+  category               String           @default("PSB")
+  status                 String           @default("OPEN")
+  title                  String?
+  description            String?
+  address                String
+  latitude               Float?
+  longitude              Float?
+  priority               String           @default("MEDIUM")
+  scheduledDate          DateTime?
+  assignmentType         String           @default("SINGLE")
+  approvalStatus         String           @default("PENDING")
+  approvedAt             DateTime?
+  approvedById           String?
+  rejectedAt             DateTime?
+  rejectedById           String?
+  rejectionReason        String?
+  customerId             String
+  createdById            String?
+  housePhotoUrl          String?
+  idCardPhotoUrl         String?
+  problemType            String?
+  completedAt            DateTime?
+  completionPhotoUrl     String?
+  completionNotes        String?
+  technicianLocation     String?
+  // PSB specific fields
+  installationDescription String?
+  packageType            String?
+  installationType       String?
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+  inventoryUsage         InventoryUsage[]
+  technicians            JobTechnician[]
+  createdBy              User?            @relation("CreatedBy", fields: [createdById], references: [id])
+  customer               Customer         @relation(fields: [customerId], references: [id])
+  rejectedBy             User?            @relation("RejectedBy", fields: [rejectedById], references: [id])
+  approvedBy             User?            @relation("ApprovedBy", fields: [approvedById], references: [id])
+  notifications          Notification[]
+  teamRoom               TeamRoom?
 
   @@map("jobs")
 }

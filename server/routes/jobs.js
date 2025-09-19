@@ -259,7 +259,12 @@ router.post('/', authenticateToken, requirePermission('jobs:create'), uploadJobP
       address,
       customerId: customerRecord.id,
       createdById: req.user.id,
-      scheduledDate: scheduledDate ? new Date(scheduledDate) : null
+      scheduledDate: scheduledDate ? new Date(scheduledDate) : null,
+      // PSB specific fields
+      ...(jobCategory === 'PSB' && {
+        installationDescription: description,
+        packageType: description // Use description as package type for now
+      })
     };
 
     // Add photo URLs if uploaded (handle files array from upload.any()) - ALL OPTIONAL
@@ -351,14 +356,30 @@ router.post('/', authenticateToken, requirePermission('jobs:create'), uploadJobP
         : (job.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.address)}` : null);
       // Get problem description using utility function
 
+      // Determine notification title based on job category
+      const notificationTitle = job.category === 'PSB' ? '🚨 *Tiket Baru PSB*' : '🚨 *Tiket Baru GANGGUAN*';
+      
+      // Format address/location properly
+      let addressLine = '';
+      if (job.address) {
+        // Check if address is a sharelok link
+        if (job.address.includes('sharelok') || job.address.includes('maps.google.com') || job.address.includes('goo.gl')) {
+          addressLine = `🗺️ Lokasi: ${job.address}\n`;
+        } else {
+          addressLine = `📍 Alamat: ${job.address}\n`;
+        }
+      }
+      
+      // Determine field label based on job category
+      const problemLabel = job.category === 'PSB' ? '📦 Paket' : '🔧 Masalah';
+      
       const message = (
-        `🚨 *Tiket Baru GANGGUAN*\n\n` +
+        `${notificationTitle}\n\n` +
         `🎫 Tiket: ${job.jobNumber}\n` +
         `👤 Pelanggan: ${job.customer?.name || '-'}\n` +
         `📞 Kontak: ${job.customer?.phone || '-'}\n` +
-        `🔧 Masalah: ${getProblemDescription(job)}\n` +
-        `📍 Alamat: ${job.address || '-'}\n` +
-        `${mapsLink ? '🗺️ Lokasi: ' + mapsLink + '\n' : ''}` +
+        `${problemLabel}: ${getProblemDescription(job)}\n` +
+        addressLine +
         `⏰ Status: ${job.status}\n\n` +
         
         `🎯 *PILIH AKSI:*\n` +
@@ -546,13 +567,26 @@ router.post('/:id/assign', authenticateToken, requireRole(['admin', 'superadmin'
       
       // Get problem description using utility function
 
+      // Format address/location properly for assignment notification
+      let assignmentAddressLine = '';
+      if (updatedJob.address) {
+        // Check if address is a sharelok link
+        if (updatedJob.address.includes('sharelok') || updatedJob.address.includes('maps.google.com') || updatedJob.address.includes('goo.gl')) {
+          assignmentAddressLine = `🗺️ Lokasi: ${updatedJob.address}\n`;
+        } else {
+          assignmentAddressLine = `📍 Alamat: ${updatedJob.address}\n`;
+        }
+      }
+
+      // Determine field label for assignment notification
+      const assignmentProblemLabel = updatedJob.category === 'PSB' ? '📦 Paket' : '🔧 Masalah';
+      
       const detailText = (techName) => (
         `📢 *Penugasan Tiket ${updatedJob.category || updatedJob.type}*\n\n` +
         `👤 Pelanggan: ${updatedJob.customer?.name || '-'}\n` +
         `📞 Kontak: ${updatedJob.customer?.phone || '-'}\n` +
-        `🔧 Masalah: ${getProblemDescription(updatedJob)}\n` +
-        `📍 Alamat: ${updatedJob.address || '-'}\n` +
-        `${mapsLink ? '🗺️ Lokasi: ' + mapsLink + '\n' : ''}` +
+        `${assignmentProblemLabel}: ${getProblemDescription(updatedJob)}\n` +
+        assignmentAddressLine +
         `${updatedJob.scheduledDate ? '⏰ Jadwal: ' + new Date(updatedJob.scheduledDate).toLocaleString('id-ID') + '\n' : ''}` +
         `🔧 Ditugaskan kepada: ${techName}\n` +
         `🧾 Tiket: ${updatedJob.jobNumber}`
@@ -591,14 +625,24 @@ router.post('/:id/assign', authenticateToken, requireRole(['admin', 'superadmin'
         if (custPhone) {
           const custJid = `${custPhone}@s.whatsapp.net`;
           const assignedTechs = (updatedJob.technicians || []).map(jt => jt.technician?.name).filter(Boolean).join(', ');
+          // Format address/location properly for customer notification
+          let customerAddressLine = '';
+          if (updatedJob.address) {
+            // Check if address is a sharelok link
+            if (updatedJob.address.includes('sharelok') || updatedJob.address.includes('maps.google.com') || updatedJob.address.includes('goo.gl')) {
+              customerAddressLine = `🗺️ Lokasi: ${updatedJob.address}\n`;
+            } else {
+              customerAddressLine = `📍 Alamat: ${updatedJob.address}\n`;
+            }
+          }
+
           const customerMsg = (
             `✅ *Tiket Anda Sedang Diproses*\n\n` +
             `🧾 Tiket: ${updatedJob.jobNumber}\n` +
             `🔧 Teknisi: ${assignedTechs || '-'}\n` +
             `${updatedJob.scheduledDate ? '⏰ Jadwal: ' + new Date(updatedJob.scheduledDate).toLocaleString('id-ID') + '\n' : ''}` +
-            `${mapsLink ? '🗺️ Lokasi: ' + mapsLink + '\n' : ''}` +
-            `📍 Alamat: ${updatedJob.address || '-'}\n\n` +
-            `Mohon siapkan lokasi/akses agar teknisi dapat bekerja dengan lancar.`
+            customerAddressLine +
+            `\nMohon siapkan lokasi/akses agar teknisi dapat bekerja dengan lancar.`
           );
 
           await prisma.notification.create({
