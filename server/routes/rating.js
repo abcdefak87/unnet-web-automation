@@ -116,17 +116,25 @@ router.post('/jobs/rating', [
       }
     }
 
-    // Create notification for technicians
-    for (const technicianId of technicianIds) {
-      await prisma.notification.create({
-        data: {
-          type: 'RATING_RECEIVED',
-          recipient: technicianId,
-          message: `Anda mendapat rating ${rating}/5 dari pelanggan untuk job ${job.jobNumber}`,
-          jobId,
-          status: 'PENDING'
-        }
-      });
+    // Notify technicians about the rating received via WhatsApp
+    try {
+      const CustomerRatingService = require('../services/CustomerRatingService');
+      await CustomerRatingService.notifyTechniciansAboutRating(job, rating, feedback);
+    } catch (notificationError) {
+      console.error('Failed to notify technicians about rating:', notificationError);
+      
+      // Fallback: Create simple notification for technicians
+      for (const technicianId of technicianIds) {
+        await prisma.notification.create({
+          data: {
+            type: 'RATING_RECEIVED',
+            recipient: technicianId,
+            message: `Anda mendapat rating ${rating}/5 dari pelanggan untuk job ${job.jobNumber}`,
+            jobId,
+            status: 'PENDING'
+          }
+        });
+      }
     }
 
     res.json({

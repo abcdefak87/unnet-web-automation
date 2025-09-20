@@ -217,6 +217,9 @@ UNNET WIFI Customer Service`;
       //   await this.updateTechnicianRatingStats(assignment.technicianId, rating);
       // }
 
+      // Notify technicians about the rating received
+      await this.notifyTechniciansAboutRating(job, rating, feedback);
+
       return { success: true, jobNumber: job.jobNumber };
     } catch (error) {
       console.error('Error submitting rating:', error);
@@ -289,6 +292,163 @@ UNNET WIFI Customer Service`;
     } catch (error) {
       console.error('Error checking rating achievements:', error);
     }
+  }
+
+  /**
+   * Notify technicians when they receive a rating from customer
+   * @param {Object} job - Job object with technicians
+   * @param {number} rating - Rating value (1-5)
+   * @param {string} feedback - Customer feedback
+   */
+  async notifyTechniciansAboutRating(job, rating, feedback) {
+    try {
+      console.log(`🔔 [RATING NOTIFICATION] Starting notification process for job ${job.jobNumber}`);
+      console.log(`🔔 [RATING NOTIFICATION] Rating: ${rating}/5, Feedback: "${feedback || 'None'}"`);
+      console.log(`🔔 [RATING NOTIFICATION] Job technicians count: ${job.technicians?.length || 0}`);
+
+      if (!job.technicians || job.technicians.length === 0) {
+        console.warn(`⚠️ [RATING NOTIFICATION] No technicians found for job ${job.jobNumber}`);
+        return;
+      }
+
+      for (const assignment of job.technicians) {
+        const technician = assignment.technician;
+        if (!technician) {
+          console.warn(`⚠️ [RATING NOTIFICATION] Skipping assignment without technician data`);
+          continue;
+        }
+
+        console.log(`🔔 [RATING NOTIFICATION] Processing technician: ${technician.name} (${technician.phone})`);
+        console.log(`🔔 [RATING NOTIFICATION] Technician WhatsApp JID: ${technician.whatsappJid || 'Not set'}`);
+
+        const message = this.generateTechnicianRatingNotification(job, technician, rating, feedback);
+        
+        // Send notification to technician via WhatsApp bot
+        try {
+          const technicianJid = technician.whatsappJid || (this.normalizePhone(technician.phone) ? `${this.normalizePhone(technician.phone)}@s.whatsapp.net` : null);
+          
+          console.log(`🔔 [RATING NOTIFICATION] Final JID for ${technician.name}: ${technicianJid}`);
+          
+          if (technicianJid) {
+            let notificationSent = false;
+            
+            // Try direct send via global WhatsApp socket first
+            try {
+              console.log(`🔔 [RATING NOTIFICATION] Checking global WhatsApp socket...`);
+              if (global.whatsappSocket && global.whatsappSocket.user && global.whatsappSocket.sendMessage) {
+                console.log(`🔔 [RATING NOTIFICATION] Global socket available, sending message...`);
+                await global.whatsappSocket.sendMessage(technicianJid, { text: message });
+                console.log(`✅ [RATING NOTIFICATION] SUCCESS: Rating notification sent directly via global socket to technician ${technician.name} (${technician.phone})`);
+                notificationSent = true;
+              } else {
+                console.log(`🔔 [RATING NOTIFICATION] Global socket not available or missing sendMessage method`);
+              }
+            } catch (globalSocketError) {
+              console.log(`🔔 [RATING NOTIFICATION] Global socket error: ${globalSocketError.message}`);
+            }
+
+            // Try direct send via WhatsApp bot instance
+            if (!notificationSent) {
+              try {
+                console.log(`🔔 [RATING NOTIFICATION] Trying WhatsApp bot instance...`);
+                const { getWhatsAppBot } = require('../utils/whatsappBot');
+                const bot = getWhatsAppBot();
+                
+                if (bot && bot.sendMessage) {
+                  console.log(`🔔 [RATING NOTIFICATION] Bot instance available, sending message...`);
+                  await bot.sendMessage(technicianJid, { text: message });
+                  console.log(`✅ [RATING NOTIFICATION] SUCCESS: Rating notification sent directly via bot instance to technician ${technician.name} (${technician.phone})`);
+                  notificationSent = true;
+                } else {
+                  console.log(`🔔 [RATING NOTIFICATION] Bot instance not available or missing sendMessage method`);
+                }
+              } catch (botError) {
+                console.log(`🔔 [RATING NOTIFICATION] Bot instance error: ${botError.message}`);
+              }
+            }
+
+            // Fallback: Queue notification in database
+            if (!notificationSent) {
+              console.log(`🔔 [RATING NOTIFICATION] Queueing notification in database...`);
+              await prisma.notification.create({
+                data: {
+                  type: 'WHATSAPP',
+                  recipient: technicianJid,
+                  message: message,
+                  status: 'PENDING',
+                  jobId: job.id
+                }
+              });
+              
+              console.log(`📝 [RATING NOTIFICATION] Rating notification queued for technician ${technician.name} (${technician.phone})`);
+            }
+          } else {
+            console.warn(`⚠️ [RATING NOTIFICATION] No valid WhatsApp JID for technician ${technician.name} (${technician.phone})`);
+          }
+        } catch (notificationError) {
+          console.error(`❌ [RATING NOTIFICATION] Failed to notify technician ${technician.name} about rating:`, notificationError);
+        }
+      }
+
+      console.log(`🔔 [RATING NOTIFICATION] Completed notification process for job ${job.jobNumber}`);
+
+    } catch (error) {
+      console.error('❌ [RATING NOTIFICATION] Error notifying technicians about rating:', error);
+    }
+  }
+
+  /**
+   * Generate rating notification message for technician
+   */
+  generateTechnicianRatingNotification(job, technician, rating, feedback) {
+    const ratingText = {
+      1: 'Sangat Buruk',
+      2: 'Buruk',
+      3: 'Biasa', 
+      4: 'Baik',
+      5: 'Sangat Baik'
+    };
+
+    const ratingEmoji = {
+      1: '😞',
+      2: '😐',
+      3: '😊',
+      4: '😄',
+      5: '🤩'
+    };
+
+    let message = `🎉 *RATING DITERIMA!* ${ratingEmoji[rating]}
+
+Halo *${technician.name}*! 👋
+
+Pelanggan baru saja memberikan rating untuk job yang telah Anda selesaikan:
+
+📋 *Detail Job:*
+🎫 Tiket: *${job.jobNumber}*
+👤 Pelanggan: *${job.customer?.name || 'Unknown'}*
+📞 Kontak: *${job.customer?.phone || 'Unknown'}*
+🏷️ Kategori: *${job.category || job.type}*
+📅 Selesai: *${job.completedAt ? new Date(job.completedAt).toLocaleString('id-ID') : 'Unknown'}*
+
+⭐ *Rating: ${rating}/5 - ${ratingText[rating]}*`;
+
+    if (feedback && feedback.trim()) {
+      message += `\n\n💬 *Feedback Pelanggan:*
+"${feedback}"`;
+    }
+
+    message += `\n\n💡 *Tips untuk Rating Lebih Baik:*
+• Komunikasi yang jelas dan ramah
+• Pekerjaan yang rapi dan sesuai standar  
+• Tepat waktu sesuai jadwal
+• Follow-up untuk memastikan kepuasan
+
+🎯 *Terima kasih atas kerja keras Anda!*
+
+---
+*UNNET WIFI Management* 🚀`;
+
+    return message;
   }
 
 }
