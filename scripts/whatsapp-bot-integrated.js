@@ -17,6 +17,7 @@ const fs = require('fs');
 const path = require('path');
 const db = require('../server/whatsapp/consolidated/BotDatabaseService');
 const { broadcastWhatsAppStatusUpdate } = require('../server/services/websocketService');
+const { setWhatsAppBot } = require('../server/utils/whatsappBot');
 
 const sessionPath = path.join(__dirname, '..', 'server', 'auth_info_baileys');
 const statusFilePath = path.join(__dirname, 'whatsapp-status.json');
@@ -208,8 +209,19 @@ function monitorNotifications() {
             }
           }
           
-          await sock.sendMessage(notif.recipient, { text: notif.message });
-          console.log(`📤 Notifikasi terkirim ke ${notif.recipient}`);
+          // Ensure recipient is in proper JID format
+          let recipientJid = notif.recipient;
+          if (!recipientJid.includes('@')) {
+            // Format phone number to JID
+            let phoneNumber = recipientJid.replace(/\D/g, '');
+            if (!phoneNumber.startsWith('62')) {
+              phoneNumber = '62' + phoneNumber.replace(/^0+/, '');
+            }
+            recipientJid = phoneNumber + '@s.whatsapp.net';
+          }
+          
+          await sock.sendMessage(recipientJid, { text: notif.message });
+          console.log(`📤 Notifikasi terkirim ke ${recipientJid}`);
           await db.markNotificationSent(notif.id);
         } catch (error) {
           console.error(`Gagal mengirim notifikasi ${notif.id}:`, error.message);
@@ -343,6 +355,9 @@ async function startWhatsAppBot() {
 
     console.log('✅ Koneksi dibuat\n');
 
+    // Register bot instance for external access
+    setWhatsAppBot(sock);
+
     // Handle credential updates - IMPORTANT for session persistence
     sock.ev.on('creds.update', saveCreds);
 
@@ -451,14 +466,18 @@ async function startWhatsAppBot() {
         
         console.log('\n⚠️ Koneksi terputus');
         
-        // Send disconnection notification to admin
-        await sendAdminNotification(
-          `*Bot WhatsApp Terputus*\n\n` +
-          `⚠️ Alasan: ${reason?.message || 'Tidak diketahui'}\n` +
-          `🔄 Status: Mencoba menghubungkan kembali...\n` +
-          `⏰ Waktu: ${new Date().toLocaleString()}`,
-          'warning'
-        );
+        // Send disconnection notification to admin (with error handling)
+        try {
+          await sendAdminNotification(
+            `*Bot WhatsApp Terputus*\n\n` +
+            `⚠️ Alasan: ${reason?.message || 'Tidak diketahui'}\n` +
+            `🔄 Status: Mencoba menghubungkan kembali...\n` +
+            `⏰ Waktu: ${new Date().toLocaleString()}`,
+            'warning'
+          );
+        } catch (error) {
+          console.log('Error sending admin notification:', error.message);
+        }
         
         // Update status file to show disconnected
         updateStatusFile();
@@ -855,6 +874,33 @@ async function startWhatsAppBot() {
         return; // Exit early untuk tombol interaktif
       }
       
+      // Check if message is a rating response FIRST (before command processing)
+      if (text && text.toUpperCase().startsWith('RATING')) {
+        console.log(`[RATING] Received from ${from}: "${text}"`);
+        try {
+          const CustomerRatingService = require('../server/services/CustomerRatingService');
+          const phoneNum = from.split('@')[0];
+          
+          const result = await CustomerRatingService.processWhatsAppRating(phoneNum, text);
+          
+          // Send response immediately
+          const responseMessage = result.success ? 
+            `✅ ${result.message}` : 
+            `❌ ${result.message}`;
+          
+          await sock.sendMessage(from, { 
+            text: responseMessage 
+          });
+          console.log(`[RATING] ✅ Processed and sent response: ${responseMessage}`);
+        } catch (error) {
+          console.error('[RATING] ❌ Error:', error);
+          await sock.sendMessage(from, { 
+            text: '❌ Gagal memproses rating. Silakan coba lagi dengan format: RATING [1-5] [feedback]' 
+          });
+        }
+        return; // Exit early, don't process as command
+      }
+      
       // Only log and process commands, not regular messages
       if (text.startsWith('/')) {
         console.log(`📩 Perintah terdeteksi dari ${pushName}: ${text}`);
@@ -862,6 +908,7 @@ async function startWhatsAppBot() {
         const args = text.split(' ').slice(1);
         console.log('Perintah yang diurai:', command);
         console.log('Argumen:', args);
+        console.log('Command exact match check:', command === '/menu');
         
         try {
           console.log('Memasuki switch perintah untuk:', command);
@@ -874,6 +921,7 @@ async function startWhatsAppBot() {
               break;
               
             case '/menu':
+              console.log('Memproses perintah /menu...');
               const helpText = `📱 *Bot WhatsApp ISP*
 
 ⚡ *Aksi Cepat*
@@ -907,6 +955,7 @@ async function startWhatsAppBot() {
 • Job ID opsional jika ada session aktif
 • Ketik /menu untuk melihat menu ini`;
               await sock.sendMessage(from, { text: helpText });
+              console.log('✅ Respons /menu terkirim');
               break;
               
             case '/status':
@@ -1325,36 +1374,56 @@ ${error?.message ? 'Alasan: ' + error.message : 'Silakan coba lagi.'}`;
             case '/statistik':
               try {
                 const phoneNum = from.split('@')[0];
-                const stats = await db.getTechnicianStats(phoneNum);
+                const showDetail = args.includes('detail');
                 
-                if (!stats) {
-                  await sock.sendMessage(from, { 
-                    text: '❌ Anda belum terdaftar sebagai teknisi. Ketik /daftar untuk mendaftar.' 
-                  });
-                  break;
+                // Use EnhancedStatsCommand for better stats
+                try {
+                  const EnhancedStatsCommand = require('../server/services/whatsapp/commands/EnhancedStatsCommand');
+                  const statsCommand = new EnhancedStatsCommand();
+                  const result = await statsCommand.execute(from, args, { pushName });
+                  
+                  await sock.sendMessage(from, { text: result.message });
+                } catch (enhancedError) {
+                  console.error('Enhanced stats failed, falling back to basic stats:', enhancedError);
+                  
+                  // Fallback to basic stats
+                  const stats = await db.getTechnicianStats(phoneNum);
+                  
+                  if (!stats) {
+                    await sock.sendMessage(from, { 
+                      text: '❌ Anda belum terdaftar sebagai teknisi. Ketik /daftar untuk mendaftar.' 
+                    });
+                    break;
+                  }
+                  
+                  // Format basic stats message
+                  let statsText = `📊 *STATISTIK ANDA*
+
+👤 ${pushName || 'Teknisi'}
+
+🎯 Ringkasan:
+📋 Total Pekerjaan: ${stats.basic?.totalJobs || 0}
+✅ Selesai: ${stats.basic?.completedJobs || 0}
+⏳ Aktif: ${stats.basic?.activeJobs || 0}
+📈 Completion Rate: ${stats.basic?.completionRate || 0}%
+⭐ Rating: ${stats.rating?.averageRating || 0}/5 (${stats.rating?.ratingCount || 0} review)
+⚡ Efisiensi: 85%
+
+💪 Tetap semangat!`;
+                  
+                  await sock.sendMessage(from, { text: statsText });
                 }
-                
-                const statsText = `📊 *STATISTIK ANDA*
-
-👤 ${pushName}
-
-📋 Total Pekerjaan: ${stats.totalJobs}
-✅ Selesai: ${stats.completedJobs}
-⏳ Aktif: ${stats.activeJobs}
-⭐ Rating: ${stats.avgRating ? stats.avgRating.toFixed(1) : '0'}/5
-
-Tetap semangat! 💪`;
-                await sock.sendMessage(from, { text: statsText });
               } catch (error) {
                 console.error('Error in /stats:', error);
                 await sock.sendMessage(from, { 
-                  text: '❌ Gagal mengambil statistik.' 
+                  text: '❌ Kesalahan: ' + error.message + '\n\nSilakan coba lagi atau hubungi admin.' 
                 });
               }
               break;
-              
+
             default:
               console.log('Perintah tidak dikenal:', command);
+              console.log('Available commands: /ping, /menu, /status, /info, /daftar, /pekerjaan, /pekerjaanku, /statistik, /ambil, /mulai, /batal, /selesai');
               await sock.sendMessage(from, { 
                 text: '❓ Perintah tidak dikenal. Ketik /menu untuk melihat daftar perintah.' 
               });
@@ -1423,6 +1492,16 @@ Tetap semangat! 💪`;
 }
 
 // Handle process termination
+// Handle uncaught exceptions and unhandled rejections
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  console.error('Stack:', error.stack);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
 process.on('SIGINT', () => {
   console.log('\n\nMematikan bot WhatsApp...');
   if (sock) {

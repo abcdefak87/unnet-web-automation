@@ -890,6 +890,8 @@ router.put('/:id/complete', authenticateToken, uploadJobPhotos, [
       }
     });
 
+    // Customer rating request is now handled automatically in CustomerNotificationService.notifyJobCompleted
+
     res.json({ message: 'Job completed successfully', job });
   } catch (error) {
     console.error('Complete job error:', error);

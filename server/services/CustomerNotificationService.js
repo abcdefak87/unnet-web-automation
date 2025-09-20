@@ -329,7 +329,22 @@ ${completionNotes ? `📝 Catatan: ${completionNotes}` : ''}
 Terima kasih telah mempercayai layanan kami!`;
       }
 
-      return await this.sendMessageToCustomer(job.customer.phone, message, job.id);
+      const result = await this.sendMessageToCustomer(job.customer.phone, message, job.id);
+      
+      // Send rating request after a delay to ensure completion message is sent first
+      if (result.success) {
+        // Use a more reliable delay method
+        await new Promise(resolve => setTimeout(resolve, 10000)); // 10 second delay
+        
+        try {
+          const CustomerRatingService = require('./CustomerRatingService');
+          await CustomerRatingService.requestCustomerRating(job, technician);
+        } catch (ratingError) {
+          logger.error('Failed to send rating request:', ratingError);
+        }
+      }
+      
+      return result;
     } catch (error) {
       logger.error('Failed to notify job completed:', error);
       return { success: false, error: error.message };

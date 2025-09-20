@@ -132,22 +132,32 @@ model AuditLog {
 }
 
 model Technician {
-  id                 String            @id @default(cuid())
-  name               String
-  phone              String            @unique
-  whatsappJid        String?           @unique
-  isActive           Boolean           @default(true)
-  isAvailable        Boolean           @default(true)
-  isAdmin            Boolean           @default(false)
-  skills             String?
-  lastKnownLat       Float?
-  lastKnownLon       Float?
-  lastLocationUpdate DateTime?
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
-  inventoryLogs      InventoryLog[]
-  jobAssignments     JobTechnician[]
-  roomMessages       TeamRoomMessage[]
+  id                      String                     @id @default(cuid())
+  name                    String
+  phone                   String                     @unique
+  whatsappJid             String?                    @unique
+  isActive                Boolean                    @default(true)
+  isAvailable             Boolean                    @default(true)
+  isAdmin                 Boolean                    @default(false)
+  skills                  String?
+  lastKnownLat            Float?
+  lastKnownLon            Float?
+  lastLocationUpdate      DateTime?
+  // Performance tracking fields
+  performanceScore        Float?                     @default(0)
+  lastPerformanceUpdate   DateTime?
+  totalRating             Float?                     @default(0)
+  ratingCount             Int                        @default(0)
+  avgCompletionTimeHours  Float?                     @default(0)
+  streakDays              Int                        @default(0)
+  lastActiveDate          DateTime?
+  createdAt               DateTime                   @default(now())
+  updatedAt               DateTime                   @updatedAt
+  inventoryLogs           InventoryLog[]
+  jobAssignments          JobTechnician[]
+  roomMessages            TeamRoomMessage[]
+  performanceLogs         TechnicianPerformanceLog[]
+  achievements            TechnicianAchievement[]
 
   @@map("technicians")
 }
@@ -238,18 +248,23 @@ model Job {
 }
 
 model JobTechnician {
-  id              String     @id @default(cuid())
-  jobId           String
-  technicianId    String
-  role            String     @default("PRIMARY")
-  assignedAt      DateTime   @default(now())
-  acceptedAt      DateTime?
-  arrivedAt       DateTime?
-  completedAt     DateTime?
-  completionNotes String?
-  customerRating  Int?
-  technician      Technician @relation(fields: [technicianId], references: [id])
-  job             Job        @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  id                    String     @id @default(cuid())
+  jobId                 String
+  technicianId          String
+  role                  String     @default("PRIMARY")
+  assignedAt            DateTime   @default(now())
+  acceptedAt            DateTime?
+  startedAt             DateTime?
+  arrivedAt             DateTime?
+  completedAt           DateTime?
+  completionNotes       String?
+  customerRating        Int?
+  travelTimeMinutes     Int        @default(0)
+  workTimeMinutes       Int        @default(0)
+  customerSatisfaction  Int?       // 1-5 rating
+  qualityScore          Int?       // 1-10 score
+  technician            Technician @relation(fields: [technicianId], references: [id])
+  job                   Job        @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
   @@unique([jobId, technicianId])
   @@map("job_technicians")
@@ -406,4 +421,35 @@ model TechnicianRegistration {
   approvedBy       User?     @relation("ApprovedRegistrations", fields: [approvedById], references: [id])
 
   @@map("technician_registrations")
+}
+
+model TechnicianPerformanceLog {
+  id               String     @id @default(cuid())
+  technicianId     String
+  date             DateTime
+  jobsCompleted    Int        @default(0)
+  avgRating        Float      @default(0)
+  avgCompletionTime Float     @default(0)
+  performanceScore Float      @default(0)
+  createdAt        DateTime   @default(now())
+  technician       Technician @relation(fields: [technicianId], references: [id], onDelete: Cascade)
+
+  @@index([technicianId, date])
+  @@index([date])
+  @@map("technician_performance_logs")
+}
+
+model TechnicianAchievement {
+  id                String     @id @default(cuid())
+  technicianId      String
+  achievementType   String
+  achievementName   String
+  description       String?
+  earnedAt          DateTime   @default(now())
+  metadata          String?    // JSON data for achievement details
+  technician        Technician @relation(fields: [technicianId], references: [id], onDelete: Cascade)
+
+  @@index([technicianId])
+  @@index([achievementType])
+  @@map("technician_achievements")
 }

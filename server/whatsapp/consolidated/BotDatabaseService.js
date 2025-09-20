@@ -6,24 +6,42 @@
 const prisma = require('../../utils/database');
 
 class BotDatabaseService {
-  // Helper: normalize phone to 62 format
+  // Helper: normalize phone to 62 format - flexible format support
   normalizePhone(phone) {
     if (!phone) return null;
-    let p = phone.toString().replace(/\D/g, '');
-    if (p.startsWith('0')) p = '62' + p.substring(1);
-    if (!p.startsWith('62')) p = '62' + p;
-    return p;
+    
+    // Remove all non-numeric characters
+    let cleaned = phone.toString().replace(/[^0-9]/g, '');
+    
+    // Handle different formats
+    if (cleaned.startsWith('62')) {
+      // Already in 62 format
+      return cleaned;
+    } else if (cleaned.startsWith('0')) {
+      // Convert from 0 format to 62
+      return '62' + cleaned.substring(1);
+    } else {
+      // Assume it's missing country code, add 62
+      return '62' + cleaned;
+    }
   }
 
-  // Check existing technician by phone/jid
+  // Check existing technician by phone/jid - flexible format support
   async checkExistingTechnician(phone) {
     try {
       const normalized = this.normalizePhone(phone);
+      const originalPhone = phone;
+      const phoneWithoutCountry = phone.replace(/^62/, '0');
+      
       const technician = await prisma.technician.findFirst({
         where: {
           OR: [
             { phone: normalized },
-            { whatsappJid: normalized ? normalized + '@s.whatsapp.net' : undefined }
+            { phone: originalPhone },
+            { phone: phoneWithoutCountry },
+            { whatsappJid: normalized ? normalized + '@s.whatsapp.net' : undefined },
+            { whatsappJid: originalPhone ? originalPhone + '@s.whatsapp.net' : undefined },
+            { whatsappJid: phoneWithoutCountry ? phoneWithoutCountry + '@s.whatsapp.net' : undefined }
           ]
         }
       });
@@ -243,15 +261,40 @@ class BotDatabaseService {
     }
   }
 
-  // Get technician statistics
+  // Get technician statistics (enhanced version)
   async getTechnicianStats(phoneNumber) {
     try {
+      const EnhancedStatsService = require('../../services/EnhancedTechnicianStatsService');
+      return await EnhancedStatsService.getEnhancedTechnicianStats(phoneNumber);
+    } catch (error) {
+      console.error('Error getting enhanced technician stats:', error);
+      // Fallback to basic stats
+      return await this.getBasicTechnicianStats(phoneNumber);
+    }
+  }
+
+  // Basic technician statistics (fallback) - flexible format support
+  async getBasicTechnicianStats(phoneNumber) {
+    try {
       const normalized = this.normalizePhone(phoneNumber);
+      const originalPhone = phoneNumber;
+      const phoneWithoutCountry = phoneNumber.replace(/^62/, '0');
+      
+      console.log(`[DEBUG] getBasicTechnicianStats for:`, {
+        original: phoneNumber,
+        normalized,
+        phoneWithoutCountry
+      });
+      
       const technician = await prisma.technician.findFirst({
         where: { 
           OR: [
             { whatsappJid: normalized + '@s.whatsapp.net' },
-            { phone: normalized }
+            { whatsappJid: originalPhone + '@s.whatsapp.net' },
+            { whatsappJid: phoneWithoutCountry + '@s.whatsapp.net' },
+            { phone: normalized },
+            { phone: originalPhone },
+            { phone: phoneWithoutCountry }
           ]
         }
       });
@@ -287,13 +330,20 @@ class BotDatabaseService {
       const totalJobs = completedJobs + activeJobs;
 
       return {
-        totalJobs,
-        completedJobs,
-        activeJobs,
-        avgRating: 4.5 // Placeholder for now
+        basic: {
+          totalJobs,
+          completedJobs,
+          activeJobs,
+          completionRate: totalJobs > 0 ? Math.round((completedJobs / totalJobs) * 100) : 0
+        },
+        rating: {
+          averageRating: technician.totalRating && technician.ratingCount > 0 ? 
+            Math.round((technician.totalRating / technician.ratingCount) * 10) / 10 : 0,
+          ratingCount: technician.ratingCount || 0
+        }
       };
     } catch (error) {
-      console.error('Error getting technician stats:', error);
+      console.error('Error getting basic technician stats:', error);
       return null;
     }
   }
@@ -524,6 +574,21 @@ class BotDatabaseService {
         }
       } catch (notificationError) {
         console.error('Failed to notify customer about job completion:', notificationError);
+      }
+
+      // Request customer rating
+      try {
+        const CustomerRatingService = require('../../services/CustomerRatingService');
+        const jobWithCustomer = await prisma.job.findUnique({
+          where: { id: job.id },
+          include: { customer: true }
+        });
+        if (jobWithCustomer && jobWithCustomer.customer) {
+          await CustomerRatingService.requestCustomerRating(jobWithCustomer, technician);
+          console.log('✅ Rating request sent to customer');
+        }
+      } catch (ratingError) {
+        console.error('Failed to request customer rating:', ratingError);
       }
 
       return { success: true, message: 'Pekerjaan selesai' };

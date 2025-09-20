@@ -267,6 +267,7 @@ app.use('/api/users', require('./routes/users'));
 app.use('/api/customers', require('./routes/customers'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/reports', require('./routes/reports'));
+app.use('/api/rating', require('./routes/rating'));
 
 // Debug: Log all registered routes
 console.log('Registered API routes:');
