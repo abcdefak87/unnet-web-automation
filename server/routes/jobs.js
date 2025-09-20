@@ -248,6 +248,7 @@ router.post('/', authenticateToken, requirePermission('jobs:create'), uploadJobP
     const jobCategory = category || (type.toUpperCase() === 'PSB' ? 'PSB' : type.toUpperCase() === 'GANGGUAN' ? 'GANGGUAN' : 'PSB');
     const jobType = type.toUpperCase();
     
+    
     // Prepare job data
     const jobData = {
       jobNumber,
@@ -403,6 +404,16 @@ router.post('/', authenticateToken, requirePermission('jobs:create'), uploadJobP
         if (!jid) continue;
         await prisma.notification.create({ data: { type: 'WHATSAPP', recipient: jid, message, status: 'PENDING', jobId: job.id } });
         try { if (global.whatsappSocket && global.whatsappSocket.user) await global.whatsappSocket.sendMessage(jid, { text: message }); } catch (e) {}
+      }
+
+      // Notify customer if it's a disturbance ticket
+      if (job.category === 'GANGGUAN') {
+        try {
+          const CustomerNotificationService = require('../services/CustomerNotificationService');
+          await CustomerNotificationService.notifyTicketCreated(job);
+        } catch (customerNotificationError) {
+          console.error('Failed to notify customer:', customerNotificationError);
+        }
       }
     } catch (whatsappError) {
       console.error('WhatsApp integrated broadcast error:', whatsappError);

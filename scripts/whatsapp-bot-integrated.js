@@ -104,22 +104,27 @@ function monitorTestMessages() {
   const processedMessages = new Set(); // Track processed messages to prevent duplicates
   
   setInterval(async () => {
+    
     if (sock && sock.user && fs.existsSync(testFile)) {
       try {
         const data = JSON.parse(fs.readFileSync(testFile, 'utf8'));
         
+        // Handle both 'phone' and 'to' fields for backward compatibility
+        const phoneField = data.phone || data.to;
+        const timestamp = typeof data.timestamp === 'string' ? new Date(data.timestamp).getTime() : data.timestamp;
+        
         // Create unique message ID to prevent duplicates
-        const messageId = `${data.phone}_${data.timestamp}_${data.message}`;
+        const messageId = `${phoneField}_${timestamp}_${data.message}`;
         
         // Check if message is not too old (within 30 seconds) and not already processed
-        if (Date.now() - data.timestamp < 30000 && !processedMessages.has(messageId)) {
+        if (Date.now() - timestamp < 30000 && !processedMessages.has(messageId)) {
           console.log('📨 Memproses pesan test dari antarmuka web...');
           
           // Mark as processed immediately to prevent duplicates
           processedMessages.add(messageId);
           
           // Format phone number to WhatsApp JID
-          let phoneNumber = data.phone.replace(/\D/g, '');
+          let phoneNumber = phoneField.replace(/\D/g, '');
           if (!phoneNumber.startsWith('62')) {
             phoneNumber = '62' + phoneNumber.replace(/^0+/, '');
           }

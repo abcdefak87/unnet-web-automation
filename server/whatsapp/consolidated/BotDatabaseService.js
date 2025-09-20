@@ -369,6 +369,20 @@ class BotDatabaseService {
         }
       });
 
+      // Notify customer that job has been assigned
+      try {
+        const CustomerNotificationService = require('../../services/CustomerNotificationService');
+        const jobWithCustomer = await prisma.job.findUnique({
+          where: { id: job.id },
+          include: { customer: true }
+        });
+        if (jobWithCustomer && jobWithCustomer.customer) {
+          await CustomerNotificationService.notifyJobAssigned(jobWithCustomer, technician);
+        }
+      } catch (notificationError) {
+        console.error('Failed to notify customer about job assignment:', notificationError);
+      }
+
       return { success: true, message: 'Pekerjaan berhasil diambil' };
     } catch (error) {
       console.error('Error assigning job:', error);
@@ -437,6 +451,20 @@ class BotDatabaseService {
         }
       });
 
+      // Notify customer that job is in progress
+      try {
+        const CustomerNotificationService = require('../../services/CustomerNotificationService');
+        const jobWithCustomer = await prisma.job.findUnique({
+          where: { id: job.id },
+          include: { customer: true }
+        });
+        if (jobWithCustomer && jobWithCustomer.customer) {
+          await CustomerNotificationService.notifyJobInProgress(jobWithCustomer, technician);
+        }
+      } catch (notificationError) {
+        console.error('Failed to notify customer about job in progress:', notificationError);
+      }
+
       return { success: true, message: 'Pekerjaan dimulai' };
     } catch (error) {
       console.error('Error starting job:', error);
@@ -490,6 +518,20 @@ class BotDatabaseService {
           notes: notes || job.notes
         }
       });
+
+      // Notify customer that job is completed
+      try {
+        const CustomerNotificationService = require('../../services/CustomerNotificationService');
+        const jobWithCustomer = await prisma.job.findUnique({
+          where: { id: job.id },
+          include: { customer: true }
+        });
+        if (jobWithCustomer && jobWithCustomer.customer) {
+          await CustomerNotificationService.notifyJobCompleted(jobWithCustomer, technician, notes);
+        }
+      } catch (notificationError) {
+        console.error('Failed to notify customer about job completion:', notificationError);
+      }
 
       return { success: true, message: 'Pekerjaan selesai' };
     } catch (error) {
