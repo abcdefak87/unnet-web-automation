@@ -755,8 +755,24 @@ Silakan assign teknisi untuk pemasangan WiFi.`;
           console.error('PSB technician notification error:', psbNotifyError);
         }
 
+        // Notify customer about PSB ticket creation
+        try {
+          const CustomerNotificationService = require('../services/CustomerNotificationService');
+          await CustomerNotificationService.notifyTicketCreated(job);
+        } catch (customerNotificationError) {
+          console.error('Failed to notify customer:', customerNotificationError);
+        }
+
         return { customer, job };
       });
+
+      // Broadcast real-time update to dashboard for PSB ticket
+      try {
+        const { broadcastJobUpdate } = require('../services/websocketService');
+        broadcastJobUpdate(result.job, 'CREATED');
+      } catch (wsError) {
+        console.error('WebSocket broadcast error for PSB ticket:', wsError);
+      }
 
       res.status(201).json({
         success: true,

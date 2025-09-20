@@ -406,8 +406,8 @@ router.post('/', authenticateToken, requirePermission('jobs:create'), uploadJobP
         try { if (global.whatsappSocket && global.whatsappSocket.user) await global.whatsappSocket.sendMessage(jid, { text: message }); } catch (e) {}
       }
 
-      // Notify customer if it's a disturbance ticket
-      if (job.category === 'GANGGUAN') {
+      // Notify customer if it's a disturbance or PSB ticket
+      if (job.category === 'GANGGUAN' || job.category === 'PSB') {
         try {
           const CustomerNotificationService = require('../services/CustomerNotificationService');
           await CustomerNotificationService.notifyTicketCreated(job);

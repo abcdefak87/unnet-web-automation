@@ -2,7 +2,7 @@
 
 ## Overview
 
-This system automatically sends WhatsApp notifications to customers when their disturbance tickets are created, assigned to technicians, started, completed, or cancelled.
+This system automatically sends WhatsApp notifications to customers when their disturbance tickets (GANGGUAN) or installation tickets (PSB) are created, assigned to technicians, started, completed, or cancelled.
 
 ## Implementation Details
 
@@ -12,7 +12,7 @@ This system automatically sends WhatsApp notifications to customers when their d
 
 This service handles all customer notifications with the following methods:
 
-- `notifyTicketCreated(job)` - When a new disturbance ticket is created
+- `notifyTicketCreated(job)` - When a new disturbance or PSB ticket is created
 - `notifyJobAssigned(job, technician)` - When a technician takes the job
 - `notifyJobInProgress(job, technician)` - When technician starts working
 - `notifyJobCompleted(job, technician, notes)` - When job is completed
@@ -23,7 +23,7 @@ This service handles all customer notifications with the following methods:
 #### Job Creation (Admin Input)
 **File**: `server/routes/jobs.js` (lines 408-416)
 
-When an admin creates a disturbance ticket through the website, the system:
+When an admin creates a disturbance or PSB ticket through the website, the system:
 1. Creates the job in the database
 2. Sends notifications to all active technicians
 3. **NEW**: Sends notification to the customer that their ticket was received
@@ -50,9 +50,43 @@ When a technician presses "1" to complete a job:
 1. Updates job status to "COMPLETED"
 2. **NEW**: Sends notification to customer that the issue has been resolved
 
+#### PSB Ticket Creation (Customer Registration)
+**File**: `server/routes/customers.js` (lines 758-764)
+
+When a customer registers for WiFi installation:
+1. Creates customer record in the database
+2. Auto-creates PSB ticket
+3. Sends notification to all active technicians
+4. **NEW**: Sends notification to customer that their PSB ticket was received
+5. **NEW**: Broadcasts real-time update to dashboard
+
 ## Message Templates
 
-### 1. Ticket Created
+### Gangguan (Disturbance) Tickets
+- **Created**: "🎫 TIKET GANGGUAN DITERIMA"
+- **Assigned**: "👨‍🔧 TEKNISI DITUGASKAN"
+- **In Progress**: "🚀 PENANGANAN GANGGUAN DIMULAI"
+- **Completed**: "✅ GANGGUAN BERHASIL DIATASI"
+- **Cancelled**: "❌ TIKET DIBATALKAN"
+
+### PSB (Installation) Tickets
+- **Created**: "🎫 TIKET PSB DITERIMA"
+- **Assigned**: "👨‍🔧 TEKNISI DITUGASKAN"
+- **In Progress**: "🚀 PEMASANGAN WIFI DIMULAI"
+- **Completed**: "✅ PEMASANGAN WIFI SELESAI"
+- **Cancelled**: "❌ TIKET PSB DIBATALKAN"
+
+## Technical Details
+
+### Real-time Updates
+The system also broadcasts real-time updates to the dashboard for:
+- New ticket creation (both GANGGUAN and PSB)
+- Status changes (ASSIGNED, IN_PROGRESS, COMPLETED, CANCELLED)
+- Job updates and modifications
+
+### Message Examples
+
+#### 1. Ticket Created
 ```
 🎫 *TIKET GANGGUAN DITERIMA*
 
