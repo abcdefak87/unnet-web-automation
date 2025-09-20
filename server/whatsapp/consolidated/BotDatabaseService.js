@@ -244,13 +244,14 @@ class BotDatabaseService {
   }
 
   // Get technician statistics
-  async getTechnicianStats(technicianId) {
+  async getTechnicianStats(phoneNumber) {
     try {
-      const technician = await prisma.technician.findUnique({
+      const normalized = this.normalizePhone(phoneNumber);
+      const technician = await prisma.technician.findFirst({
         where: { 
           OR: [
-            { whatsappJid: technicianId + '@s.whatsapp.net' },
-            { phone: technicianId }
+            { whatsappJid: normalized + '@s.whatsapp.net' },
+            { phone: normalized }
           ]
         }
       });
@@ -263,11 +264,7 @@ class BotDatabaseService {
         where: {
           technicians: {
             some: {
-              technicians: {
-            some: {
               technicianId: technician.id
-            }
-          }
             }
           },
           status: 'COMPLETED'
@@ -278,11 +275,7 @@ class BotDatabaseService {
         where: {
           technicians: {
             some: {
-              technicians: {
-            some: {
               technicianId: technician.id
-            }
-          }
             }
           },
           status: {
