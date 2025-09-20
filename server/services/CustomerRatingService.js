@@ -191,6 +191,7 @@ UNNET WIFI Customer Service`;
       const job = await prisma.job.findUnique({
         where: { id: jobId },
         include: {
+          customer: true,
           technicians: {
             include: { technician: true }
           }
@@ -417,6 +418,14 @@ UNNET WIFI Customer Service`;
       5: '🤩'
     };
 
+    // Format customer name and phone properly
+    const customerName = job.customer?.name || 'Data tidak tersedia';
+    const customerPhone = job.customer?.phone ? 
+      (job.customer.phone.startsWith('62') ? 
+        job.customer.phone : 
+        '62' + job.customer.phone.replace(/^0/, '')) : 
+      'Data tidak tersedia';
+
     let message = `🎉 *RATING DITERIMA!* ${ratingEmoji[rating]}
 
 Halo *${technician.name}*! 👋
@@ -425,10 +434,10 @@ Pelanggan baru saja memberikan rating untuk job yang telah Anda selesaikan:
 
 📋 *Detail Job:*
 🎫 Tiket: *${job.jobNumber}*
-👤 Pelanggan: *${job.customer?.name || 'Unknown'}*
-📞 Kontak: *${job.customer?.phone || 'Unknown'}*
+👤 Pelanggan: *${customerName}*
+📞 Kontak: *${customerPhone}*
 🏷️ Kategori: *${job.category || job.type}*
-📅 Selesai: *${job.completedAt ? new Date(job.completedAt).toLocaleString('id-ID') : 'Unknown'}*
+📅 Selesai: *${job.completedAt ? new Date(job.completedAt).toLocaleString('id-ID') : 'Data tidak tersedia'}*
 
 ⭐ *Rating: ${rating}/5 - ${ratingText[rating]}*`;
 
@@ -437,18 +446,64 @@ Pelanggan baru saja memberikan rating untuk job yang telah Anda selesaikan:
 "${feedback}"`;
     }
 
-    message += `\n\n💡 *Tips untuk Rating Lebih Baik:*
-• Komunikasi yang jelas dan ramah
-• Pekerjaan yang rapi dan sesuai standar  
-• Tepat waktu sesuai jadwal
-• Follow-up untuk memastikan kepuasan
+    // Generate personalized tips based on rating
+    const tips = this.generatePersonalizedTips(rating, feedback);
+    message += `\n\n💡 *Tips untuk Performa Lebih Baik:*`;
+    tips.forEach(tip => {
+      message += `\n• ${tip}`;
+    });
 
-🎯 *Terima kasih atas kerja keras Anda!*
+    message += `\n\n🎯 *Terima kasih atas kerja keras Anda!*
+📈 *Terus tingkatkan kualitas layanan untuk kepuasan pelanggan*
 
 ---
 *UNNET WIFI Management* 🚀`;
 
     return message;
+  }
+
+  /**
+   * Generate personalized tips based on rating and feedback
+   */
+  generatePersonalizedTips(rating, feedback) {
+    const baseTips = [
+      'Komunikasi yang jelas dan ramah dengan pelanggan',
+      'Pekerjaan yang rapi dan sesuai standar perusahaan',
+      'Tepat waktu sesuai jadwal yang disepakati',
+      'Follow-up untuk memastikan kepuasan pelanggan',
+      'Dokumentasi pekerjaan yang lengkap dan akurat'
+    ];
+
+    const highRatingTips = [
+      'Pertahankan standar kualitas yang sudah baik',
+      'Jadikan ini sebagai motivasi untuk terus berprestasi',
+      'Bagikan pengalaman terbaik dengan rekan kerja',
+      'Terus tingkatkan kemampuan teknis dan komunikasi'
+    ];
+
+    const lowRatingTips = [
+      'Evaluasi ulang proses kerja dan komunikasi',
+      'Minta feedback lebih detail dari pelanggan',
+      'Diskusikan dengan supervisor untuk perbaikan',
+      'Fokus pada aspek yang perlu ditingkatkan',
+      'Jangan menyerah, gunakan sebagai pembelajaran'
+    ];
+
+    const improvementTips = [
+      'Identifikasi area yang bisa diperbaiki',
+      'Latih kemampuan komunikasi dan empati',
+      'Perhatikan detail pekerjaan dengan lebih teliti',
+      'Jalin hubungan baik dengan pelanggan'
+    ];
+
+    // Select tips based on rating
+    if (rating >= 4) {
+      return highRatingTips.slice(0, 3);
+    } else if (rating <= 2) {
+      return lowRatingTips.slice(0, 4);
+    } else {
+      return improvementTips.slice(0, 4);
+    }
   }
 
 }
