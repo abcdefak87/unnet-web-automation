@@ -44,7 +44,7 @@ class CancelJobCommand extends BaseCommand {
           return this.formatError(
             'Nomor pekerjaan harus disertakan.\n\n' +
             'Contoh: /batal PSB-1234-0001\n\n' +
-            'Atau gunakan /pekerjaanku untuk melihat pekerjaan yang diambil.'
+            'Atau gunakan /myjobs untuk melihat pekerjaan yang diambil.'
           );
         }
       }
@@ -88,8 +88,8 @@ class CancelJobCommand extends BaseCommand {
           `- Pastikan alasan pembatalan sudah tepat\n` +
           `- Hubungi admin jika ada masalah teknis\n\n` +
           `📋 *Langkah Selanjutnya:*\n` +
-          `/pekerjaan - Lihat pekerjaan tersedia lainnya\n` +
-          `/statistik - Lihat statistik performa\n\n` +
+          `/jobs - Lihat pekerjaan tersedia lainnya\n` +
+          `/stats - Lihat statistik performa\n\n` +
           `💡 *Tips:*\n` +
           `- Batalkan hanya jika benar-benar diperlukan\n` +
           `- Berikan alasan yang jelas\n` +
@@ -105,7 +105,7 @@ class CancelJobCommand extends BaseCommand {
           `- Pekerjaan tidak dapat dibatalkan dalam status ini\n` +
           `- Nomor pekerjaan tidak ditemukan\n\n` +
           `🔍 *Coba:*\n` +
-          `/pekerjaanku - Lihat pekerjaan yang diambil\n` +
+          `/myjobs - Lihat pekerjaan yang diambil\n` +
           `Hubungi admin untuk bantuan`
         );
       }

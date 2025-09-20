@@ -44,7 +44,7 @@ class TakeJobCommand extends BaseCommand {
           return this.formatError(
             'Nomor pekerjaan harus disertakan.\n\n' +
             'Contoh: /ambil PSB-1234-0001\n\n' +
-            'Atau gunakan /pekerjaan untuk melihat pekerjaan tersedia.'
+            'Atau gunakan /jobs untuk melihat pekerjaan tersedia.'
           );
         }
       }
@@ -97,8 +97,8 @@ class TakeJobCommand extends BaseCommand {
           `- Pekerjaan sudah selesai atau dibatalkan\n` +
           `- Nomor pekerjaan tidak ditemukan\n\n` +
           `🔍 *Coba:*\n` +
-          `/pekerjaan - Lihat pekerjaan tersedia\n` +
-          `/pekerjaanku - Lihat pekerjaan saya`
+          `/jobs - Lihat pekerjaan tersedia\n` +
+          `/myjobs - Lihat pekerjaan saya`
         );
       }
 

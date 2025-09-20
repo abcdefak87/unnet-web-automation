@@ -6,10 +6,10 @@ const BaseCommand = require('./BaseCommand');
 
 class StatsCommand extends BaseCommand {
   constructor() {
-    super('statistik', {
+    super('stats', {
       description: 'Lihat statistik pekerjaan dan performa',
-      usage: '/statistik',
-      aliases: ['stats', 'stat'],
+      usage: '/stats',
+      aliases: ['statistik', 'stat'],
       rateLimit: {
         windowMs: 60000, // 1 minute
         maxRequests: 20, // 20 requests per minute
@@ -81,7 +81,7 @@ class StatsCommand extends BaseCommand {
       } else if (stats.completedJobs > 0) {
         message += `🚀 Keep it up! Anda sedang dalam perjalanan yang baik\n`;
       } else {
-        message += `🎯 Mulai ambil pekerjaan dengan /pekerjaan\n`;
+        message += `🎯 Mulai ambil pekerjaan dengan /jobs\n`;
       }
 
       if (stats.activeJobs > 0) {
@@ -89,8 +89,8 @@ class StatsCommand extends BaseCommand {
       }
 
       message += `\n📋 *Perintah Berguna:*\n`;
-      message += `/pekerjaan - Lihat pekerjaan tersedia\n`;
-      message += `/pekerjaanku - Lihat pekerjaan saya\n`;
+      message += `/jobs - Lihat pekerjaan tersedia\n`;
+      message += `/myjobs - Lihat pekerjaan saya\n`;
       message += `/mulai [job] - Mulai pekerjaan\n`;
       message += `/selesai [job] - Selesaikan pekerjaan`;
 

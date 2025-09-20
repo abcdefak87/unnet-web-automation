@@ -44,7 +44,7 @@ class RegisterCommand extends BaseCommand {
       if (existingTechnician) {
         return this.formatError(
           'Nomor ini sudah terdaftar sebagai teknisi.\n\n' +
-          'Gunakan /pekerjaanku untuk melihat pekerjaan Anda.'
+          'Gunakan /myjobs untuk melihat pekerjaan Anda.'
         );
       }
 
@@ -58,9 +58,9 @@ class RegisterCommand extends BaseCommand {
           `📱 WhatsApp: ${phoneNumber}\n\n` +
           `🎉 Selamat bergabung sebagai teknisi!\n\n` +
           `📋 *Perintah yang tersedia:*\n` +
-          `/pekerjaan - Lihat pekerjaan tersedia\n` +
-          `/pekerjaanku - Lihat pekerjaan saya\n` +
-          `/statistik - Lihat statistik\n\n` +
+          `/jobs - Lihat pekerjaan tersedia\n` +
+          `/myjobs - Lihat pekerjaan saya\n` +
+          `/stats - Lihat statistik\n\n` +
           `💡 *Tips:*\n` +
           `- Anda akan menerima notifikasi pekerjaan baru\n` +
           `- Gunakan tombol interaktif untuk aksi cepat\n` +

@@ -665,9 +665,9 @@ async function startWhatsAppBot() {
                               `📅 Selesai: ${new Date().toLocaleString('id-ID')}\n\n` +
                               `🎉 Terima kasih telah menyelesaikan pekerjaan!\n\n` +
                               `🎯 *Command Tersedia:*\n` +
-                              `/jobs - Lihat job tersedia\n` +
-                              `/myjobs - Lihat job yang diambil\n` +
-                              `/stats - Lihat statistik`
+                              `/pekerjaan - Lihat job tersedia\n` +
+                              `/pekerjaanku - Lihat job yang diambil\n` +
+                              `/statistik - Lihat statistik`
                       });
                       // Clear session setelah job selesai
                       clearCurrentJobForUser(from);
@@ -688,9 +688,9 @@ async function startWhatsAppBot() {
                             `Status job: ${currentJob.status}\n` +
                             `Job ini sudah selesai atau dibatalkan.\n\n` +
                             `💡 *Command Tersedia:*\n` +
-                            `/jobs - Lihat job tersedia\n` +
-                            `/myjobs - Lihat job yang diambil\n` +
-                            `/stats - Lihat statistik`
+                            `/pekerjaan - Lihat job tersedia\n` +
+                            `/pekerjaanku - Lihat job yang diambil\n` +
+                            `/statistik - Lihat statistik`
                     });
                     // Clear session
                     clearCurrentJobForUser(from);
@@ -758,11 +758,11 @@ async function startWhatsAppBot() {
                         `Notifikasi job ${currentJobForCancel.jobNumber} telah ditutup.\n\n` +
                         `💡 *Tips:*\n` +
                         `- Job ini masih tersedia untuk teknisi lain\n` +
-                        `- Gunakan /jobs untuk melihat job tersedia lainnya\n\n` +
+                        `- Gunakan /pekerjaan untuk melihat job tersedia lainnya\n\n` +
                         `🎯 *Command Tersedia:*\n` +
-                        `/jobs - Lihat job tersedia\n` +
-                        `/myjobs - Lihat job yang diambil\n` +
-                        `/stats - Lihat statistik`
+                        `/pekerjaan - Lihat job tersedia\n` +
+                        `/pekerjaanku - Lihat job yang diambil\n` +
+                        `/statistik - Lihat statistik`
                 });
                 break;
                 
@@ -828,9 +828,9 @@ async function startWhatsAppBot() {
                           `📅 Waktu Batal: ${new Date().toLocaleString('id-ID')}\n\n` +
                           `💡 *Job ini sekarang tersedia untuk teknisi lain.*\n\n` +
                           `🎯 *Command Tersedia:*\n` +
-                          `/jobs - Lihat job tersedia\n` +
-                          `/myjobs - Lihat job yang diambil\n` +
-                          `/stats - Lihat statistik`
+                          `/pekerjaan - Lihat job tersedia\n` +
+                          `/pekerjaanku - Lihat job yang diambil\n` +
+                          `/statistik - Lihat statistik`
                   });
                 } else {
                   await sock.sendMessage(from, { 
@@ -1272,9 +1272,9 @@ ${error?.message ? 'Alasan: ' + error.message : 'Silakan coba lagi.'}`;
                             `📅 Waktu Batal: ${new Date().toLocaleString('id-ID')}\n\n` +
                             `💡 *Job ini sekarang tersedia untuk teknisi lain.*\n\n` +
                             `🎯 *Command Tersedia:*\n` +
-                            `/jobs - Lihat job tersedia\n` +
-                            `/myjobs - Lihat job yang diambil\n` +
-                            `/stats - Lihat statistik`
+                            `/pekerjaan - Lihat job tersedia\n` +
+                            `/pekerjaanku - Lihat job yang diambil\n` +
+                            `/statistik - Lihat statistik`
                     });
                   } else {
                     await sock.sendMessage(from, { 

@@ -6,10 +6,10 @@ const BaseCommand = require('./BaseCommand');
 
 class MyJobsCommand extends BaseCommand {
   constructor() {
-    super('pekerjaanku', {
+    super('myjobs', {
       description: 'Lihat pekerjaan yang sudah diambil',
-      usage: '/pekerjaanku',
-      aliases: ['myjobs', 'myjob', 'assigned'],
+      usage: '/myjobs',
+      aliases: ['pekerjaanku', 'myjob', 'assigned'],
       rateLimit: {
         windowMs: 60000, // 1 minute
         maxRequests: 15, // 15 requests per minute
@@ -46,7 +46,7 @@ class MyJobsCommand extends BaseCommand {
           `📋 *Tidak Ada Pekerjaan*\n\n` +
           `Anda belum memiliki pekerjaan yang ditugaskan.\n\n` +
           `💡 *Tips:*\n` +
-          `- Gunakan /pekerjaan untuk melihat pekerjaan tersedia\n` +
+          `- Gunakan /jobs untuk melihat pekerjaan tersedia\n` +
           `- Ambil pekerjaan dengan /ambil [nomor_job]\n` +
           `- Anda akan menerima notifikasi pekerjaan baru`
         );
@@ -105,7 +105,7 @@ class MyJobsCommand extends BaseCommand {
       message += `/mulai [job] - Mulai pekerjaan\n`;
       message += `/selesai [job] - Selesaikan pekerjaan\n`;
       message += `/batal [job] - Batalkan pekerjaan\n`;
-      message += `/statistik - Lihat statistik`;
+      message += `/stats - Lihat statistik`;
 
       return this.formatSuccess(message);
 
